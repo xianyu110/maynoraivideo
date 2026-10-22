@@ -41,8 +41,9 @@ export function isWeakSessionSecret(secret: string) {
 const PAYMENT_SECRETS: Record<string, string[]> = {
   waffo: ['WAFFO_MERCHANT_ID', 'WAFFO_PRIVATE_KEY'],
   dodo: ['DODO_API_KEY', 'DODO_WEBHOOK_SECRET'],
+  stripe: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
 }
-const VIDEO_SECRETS: Record<string, string[]> = { fal: ['FAL_KEY'], yir: ['YIR_API_KEY'] }
+const VIDEO_SECRETS: Record<string, string[]> = { fal: ['FAL_KEY'], yir: ['YIR_API_KEY'], tryallapi: ['TRYALLAPI_API_KEY'] }
 const MODERATION_SECRETS: Record<string, string[]> = { openai: ['OPENAI_API_KEY'], none: [] }
 const PLACEHOLDER_HOSTS = /(^|\.)(example\.(com|org|net)|localhost)$|^127\.|SUBDOMAIN/i
 
@@ -107,7 +108,7 @@ export function checkConfig(input: ConfigInput): ConfigIssue[] {
 
   const payment = vars('PAYMENT_PROVIDER')
   if (payment === 'mock') error('PAYMENT_PROVIDER', 'PAYMENT_PROVIDER=mock：生产环境下单会返回 503')
-  else if (!PAYMENT_SECRETS[payment]) error('PAYMENT_PROVIDER', `未知的 PAYMENT_PROVIDER=${payment || '(空)'}，可选 waffo、dodo`)
+  else if (!PAYMENT_SECRETS[payment]) error('PAYMENT_PROVIDER', `未知的 PAYMENT_PROVIDER=${payment || '(空)'}，可选 waffo、dodo、stripe`)
   else {
     requireSecrets(PAYMENT_SECRETS[payment], `${payment} 支付`)
     const productsKey = `${payment.toUpperCase()}_PRODUCTS`
@@ -128,7 +129,12 @@ export function checkConfig(input: ConfigInput): ConfigIssue[] {
     if (payment === 'waffo' && planIds.length && !vars('WAFFO_STORE_ID')) {
       error('WAFFO_STORE_ID', 'WAFFO_STORE_ID 为空：开了订阅时，账单页的“管理付款”打不开，扣款失败的用户无法换卡')
     }
-    const live = payment === 'waffo' ? ['prod', 'production'].includes(vars('WAFFO_ENVIRONMENT')) : vars('DODO_ENVIRONMENT') === 'live'
+    const live =
+      payment === 'waffo'
+        ? ['prod', 'production'].includes(vars('WAFFO_ENVIRONMENT'))
+        : payment === 'stripe'
+          ? vars('STRIPE_ENVIRONMENT') === 'live'
+          : vars('DODO_ENVIRONMENT') === 'live'
     const envKey = `${payment.toUpperCase()}_ENVIRONMENT`
     if (production && !live) warn(envKey, `${envKey}=${vars(envKey) || '(空)'}：仍是 test 模式，不会真实收款`)
     if (!production && live) warn(envKey, `${envKey} 是正式模式，但 APP_ENV 不是 production：预发应使用 test 店铺`)
@@ -136,7 +142,7 @@ export function checkConfig(input: ConfigInput): ConfigIssue[] {
 
   const video = vars('VIDEO_PROVIDER')
   if (video === 'mock') error('VIDEO_PROVIDER', 'VIDEO_PROVIDER=mock：生产环境提交生成会返回 503')
-  else if (!VIDEO_SECRETS[video]) error('VIDEO_PROVIDER', `未知的 VIDEO_PROVIDER=${video || '(空)'}，可选 fal、yir`)
+  else if (!VIDEO_SECRETS[video]) error('VIDEO_PROVIDER', `未知的 VIDEO_PROVIDER=${video || '(空)'}，可选 fal、yir、tryallapi`)
   else requireSecrets(VIDEO_SECRETS[video], `${video} 视频生成`)
 
   const moderation = vars('MODERATION_PROVIDER')

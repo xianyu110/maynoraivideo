@@ -1,5 +1,6 @@
 import { ApiError, isProduction } from '../util'
 import { createDodoProvider } from './dodo'
+import { createStripeProvider } from './stripe'
 import type { PaidEvent, PaymentProvider, PaymentProviderId } from './types'
 import { createWaffoProvider } from './waffo'
 
@@ -36,7 +37,7 @@ export function mockPaidKey(orderId: string) {
 
 export function activePaymentProviderId(env: Env): PaymentProviderId {
   const id = env.PAYMENT_PROVIDER as PaymentProviderId
-  if (id === 'waffo' || id === 'dodo') return id
+  if (id === 'waffo' || id === 'dodo' || id === 'stripe') return id
   if (id === 'mock' && !isProduction(env)) return 'mock'
   throw new ApiError(503, 'payment_not_configured', `Unsupported PAYMENT_PROVIDER: ${env.PAYMENT_PROVIDER}`)
 }
@@ -45,6 +46,7 @@ export function activePaymentProviderId(env: Env): PaymentProviderId {
 export function getOrderProvider(env: Env, id: string): PaymentProvider | null {
   if (id === 'waffo') return createWaffoProvider(env)
   if (id === 'dodo') return createDodoProvider(env)
+  if (id === 'stripe') return createStripeProvider(env)
   if (id === 'mock' && !isProduction(env)) return createMockProvider(env)
   return null
 }
@@ -53,5 +55,6 @@ export function getPaymentProvider(env: Env): PaymentProvider {
   const id = activePaymentProviderId(env)
   if (id === 'waffo') return createWaffoProvider(env)
   if (id === 'dodo') return createDodoProvider(env)
+  if (id === 'stripe') return createStripeProvider(env)
   return createMockProvider(env)
 }

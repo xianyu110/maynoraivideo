@@ -1,6 +1,6 @@
 # 支付商接入
 
-模板内置 Waffo Pancake 和 Dodo Payments，本地和 e2e 用 `mock`。本文说明支付商代码要遵守的约定，以及新增一个支付商要改哪些地方。各支付商的后台配置和实测行为见 README 的“第三方回调地址”。
+模板内置 Waffo Pancake、Dodo Payments 和 Stripe，本地和 e2e 用 `mock`。本文说明支付商代码要遵守的约定，以及新增一个支付商要改哪些地方。各支付商的后台配置和实测行为见 README 的“第三方回调地址”。
 
 ## 数据流
 
@@ -129,3 +129,23 @@ SANDBOX_PROVIDER=waffo E2E_PORT=3200 npm run test:sandbox
    - sandbox e2e：照 `tests/sandbox/dodo.spec.ts` 写 `foo.spec.ts`（成功卡入账一次、拒付不入账），在 `playwright.sandbox.config.ts` 的 `SANDBOX_PROVIDER` 白名单里加上 `foo`，并登记到 `tests/e2e/CATALOG.md`。
 9. 订阅（可选）：在 `normalizeFooEvent` 里给订阅扣款填 `subscription`、把订阅状态事件映射成 `kind: 'subscription'`，实现 `cancelSubscription` 和 `portalUrl`（能由商户撤销取消的再实现 `resumeSubscription`），setup 脚本里为 `sellingPlans`（开关打开时的 `site.plans`）建订阅商品，并补上映射的单元测试。
 10. 文档：在 README 两份的“第三方回调地址”表里加上回调地址和实测行为，在 ROADMAP 里记录哪些已经用 test 模式验证过。
+
+
+## Stripe（积分包 Checkout + 订阅）
+
+与 ShipAny 站点同一套路：Stripe Checkout Session → webhook 入账 → 积分流水幂等。
+
+1. Dashboard 为每个 `site.packages[].id` / `site.plans[].id` 建 Product + Price，把 **Price ID**（`price_…`）写进 `STRIPE_PRODUCTS`。
+2. `PAYMENT_PROVIDER=stripe`，`STRIPE_ENVIRONMENT=test|live`，secret 写入 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`。
+3. Webhook 端点：`https://<domain>/api/webhooks/stripe`，至少订阅：
+   - `checkout.session.completed`
+   - `invoice.payment_succeeded` / `invoice.paid`（续费）
+   - `invoice.payment_failed`
+   - `checkout.session.expired`
+   - `charge.refunded`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+4. 实现见 `src/server/payments/stripe.ts`（Workers 上用 fetch + SubtleCrypto 验签，不依赖 `stripe` npm）。
+5. 退款窗口按 Stripe 常见政策记为 90 天（`REFUND_WINDOW_DAYS.stripe`）；实际以你的 Stripe 账户与当地法规为准。
+
+注意：Stripe 不是 Merchant of Record，税费/发票/合规由商户自行处理；若需要 MoR，继续用 Waffo / Dodo。

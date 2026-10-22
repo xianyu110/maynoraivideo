@@ -1,4 +1,4 @@
-export type PaymentProviderId = 'waffo' | 'dodo' | 'mock'
+export type PaymentProviderId = 'waffo' | 'dodo' | 'stripe' | 'mock'
 
 export interface CheckoutInput {
   order: { id: string; packageId: string; credits: number; amountCents: number; currency: string }

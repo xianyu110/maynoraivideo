@@ -167,7 +167,9 @@ export function checkPaidEvent(
 }
 
 function providerProducts(env: Env, provider: PaymentProviderId) {
-  return parseJsonRecord(provider === 'dodo' ? env.DODO_PRODUCTS : provider === 'waffo' ? env.WAFFO_PRODUCTS : undefined)
+  return parseJsonRecord(
+    provider === 'dodo' ? env.DODO_PRODUCTS : provider === 'waffo' ? env.WAFFO_PRODUCTS : provider === 'stripe' ? env.STRIPE_PRODUCTS : undefined,
+  )
 }
 
 function expectedProductId(env: Env, provider: PaymentProviderId, packageId: string) {
@@ -543,7 +545,7 @@ export function localRefundKey(order: Pick<OrderRow, 'provider' | 'refunded_amou
 // 支付商退款规则，超出后 API 直接拒绝；提前拦截给出明确错误码：
 // - Waffo：支付后 14 天内，每笔支付只能有一次退款（可部分），第二次返回 409。已退过还要再退只能线下处理，再用"仅记账"补登
 // - Dodo：支付后 30 天内，可多次部分退款（同一时间只能有一笔处理中）https://docs.dodopayments.com/features/transactions/refunds
-const REFUND_WINDOW_DAYS: Record<string, number> = { waffo: 14, dodo: 30 }
+const REFUND_WINDOW_DAYS: Record<string, number> = { waffo: 14, dodo: 30, stripe: 90 }
 export function assertProviderRefundAllowed(order: Pick<OrderRow, 'provider' | 'refunded_amount_cents' | 'paid_at'>, now = Date.now()) {
   if (order.provider === 'waffo' && order.refunded_amount_cents > 0) throw new ApiError(409, 'waffo_refund_exists')
   const days = REFUND_WINDOW_DAYS[order.provider]

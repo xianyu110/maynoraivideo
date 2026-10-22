@@ -6,6 +6,7 @@ import { getModerationProvider } from './moderation'
 import { activePaymentProviderId, getPaymentProvider } from './payments'
 import { dodoBaseUrl } from './payments/dodo'
 import { waffoEnvironment } from './payments/waffo'
+import { tryallapiBaseUrl } from './video/tryallapi'
 import type { AppContext, UserRow } from './types'
 import { ApiError, cleanSecret, createId, parseJsonRecord } from './util'
 import { activeVideoProviderId } from './video'
@@ -70,7 +71,9 @@ async function probeEmail(env: Env, admin: UserRow): Promise<Outcome> {
 async function probePayment(env: Env): Promise<Outcome> {
   const id = activePaymentProviderId(env)
   if (id === 'mock') return ok('mock 支付，不调用外部接口')
-  const products = parseJsonRecord(id === 'dodo' ? env.DODO_PRODUCTS : env.WAFFO_PRODUCTS)
+  const products = parseJsonRecord(
+    id === 'dodo' ? env.DODO_PRODUCTS : id === 'stripe' ? env.STRIPE_PRODUCTS : env.WAFFO_PRODUCTS,
+  )
   // 积分包和订阅套餐都要有商品
   const items = [...site.packages, ...sellingPlans]
   const missing = items.filter((pack) => !products[pack.id]).map((pack) => pack.id)
@@ -79,6 +82,47 @@ async function probePayment(env: Env): Promise<Outcome> {
     await getPaymentProvider(env).fetchPaidEvent!({ id: `probe_${createId('prb')}`, packageId: '', providerSessionId: null })
     const base = `签名和鉴权正常（${waffoEnvironment(env)} 环境）；Waffo 没有按商品查价格的接口，价格请在 Waffo 后台核对`
     return missing.length ? fail(`WAFFO_PRODUCTS 缺少套餐：${missing.join('、')}。${base}`) : ok(base)
+  }
+  if (id === 'stripe') {
+    const apiKey = cleanSecret(env.STRIPE_SECRET_KEY)
+    if (!apiKey) return fail('STRIPE_SECRET_KEY 未配置')
+    if (missing.length) return fail(`STRIPE_PRODUCTS 缺少套餐：${missing.join('、')}`)
+    const problems: string[] = []
+    const warnings: string[] = []
+    for (const pack of items) {
+      const priceId = products[pack.id]
+      if (!priceId) continue
+      const response = await fetch(`https://api.stripe.com/v1/prices/${encodeURIComponent(priceId)}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      })
+      if (response.status === 401) return fail('STRIPE_SECRET_KEY 无效')
+      if (response.status === 404) {
+        problems.push(`${pack.id}：Price ${priceId} 不存在`)
+        continue
+      }
+      if (!response.ok) {
+        problems.push(`${pack.id}：查询 Price 返回 HTTP ${response.status}`)
+        continue
+      }
+      const body = (await response.json().catch(() => null)) as {
+        unit_amount?: unknown
+        currency?: unknown
+        type?: unknown
+        recurring?: { interval?: unknown } | null
+      } | null
+      const amount = Number(body?.unit_amount)
+      const currency = typeof body?.currency === 'string' ? body.currency.toUpperCase() : ''
+      if (!Number.isFinite(amount) || !currency) warnings.push(`${pack.id}：读不到 Price 金额`)
+      else if (currency !== pack.currency) warnings.push(`${pack.id}：Stripe 币种是 ${currency}，site.ts 是 ${pack.currency}`)
+      else if (amount < pack.priceCents) problems.push(`${pack.id}：Stripe 售价 ${amount} 低于 site.ts 的 ${pack.priceCents}，付款会因金额不符不入账`)
+      else if (amount > pack.priceCents) warnings.push(`${pack.id}：Stripe 售价 ${amount} 高于页面展示的 ${pack.priceCents}`)
+      const isPlan = sellingPlans.some((plan) => plan.id === pack.id)
+      if (isPlan && body?.type !== 'recurring') problems.push(`${pack.id}：订阅套餐对应的 Stripe Price 不是 recurring`)
+      if (!isPlan && body?.type === 'recurring') warnings.push(`${pack.id}：积分包对应了 recurring Price，请确认`)
+    }
+    if (problems.length) return fail([...problems, ...warnings].join('；'))
+    if (warnings.length) return warn(warnings.join('；'))
+    return ok(`鉴权正常，${items.length} 个套餐的 Stripe Price 与 site.ts 一致（${env.STRIPE_ENVIRONMENT || 'test'}）`)
   }
   const apiKey = cleanSecret(env.DODO_API_KEY)
   if (!apiKey) return fail('DODO_API_KEY 未配置')
@@ -133,6 +177,18 @@ async function probeVideo(env: Env): Promise<Outcome> {
     const balance = Number(body?.credits?.current_balance)
     if (!Number.isFinite(balance)) return warn('鉴权正常，但读不到余额')
     return balanceOutcome(balance, String(body?.credits?.currency ?? 'USD'), ' fal ')
+  }
+  if (id === 'tryallapi') {
+    const key = cleanSecret(env.TRYALLAPI_API_KEY)
+    if (!key) return fail('TRYALLAPI_API_KEY 未配置')
+    const base = tryallapiBaseUrl(env)
+    // 用不存在的任务探测鉴权：401 = key 无效；404/其它 4xx 说明 key 可用
+    const response = await fetch(`${base}/v1/video/generations/probe_health_check`, {
+      headers: { Authorization: `Bearer ${key}` },
+    })
+    if (response.status === 401 || response.status === 403) return fail('TRYALLAPI_API_KEY 无效或无权访问视频接口')
+    if (response.status >= 500) return fail(`TryAllAPI 返回 HTTP ${response.status}`)
+    return ok(`鉴权正常（${base}，模型 ${site.video.tryallapi.model}）；余额请在 tryallapi 控制台查看`)
   }
   const key = cleanSecret(env.YIR_API_KEY)
   if (!key) return fail('YIR_API_KEY 未配置')

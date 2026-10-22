@@ -56,6 +56,7 @@ function AdminOrders() {
             ['', '全部'],
             ['waffo', 'Waffo'],
             ['dodo', 'Dodo Payments'],
+            ['stripe', 'Stripe'],
             ['mock', 'Mock'],
           ]}
         />

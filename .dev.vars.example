@@ -7,10 +7,17 @@ WAFFO_PRIVATE_KEY=
 # Dodo Payments（可选）
 DODO_API_KEY=
 DODO_WEBHOOK_SECRET=
+# Stripe（PAYMENT_PROVIDER=stripe）
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 # fal.ai 视频生成
 FAL_KEY=
 # yir.ai 视频网关（VIDEO_PROVIDER=yir 时必填）
 YIR_API_KEY=
+# TryAllAPI（VIDEO_PROVIDER=tryallapi 时必填）https://tryallapi.com/console/token
+TRYALLAPI_API_KEY=
+# 可选；默认 https://tryallapi.com
+TRYALLAPI_BASE_URL=
 # 图片审核（MODERATION_PROVIDER=openai 时必填）
 OPENAI_API_KEY=
 # Turnstile（vars.TURNSTILE_SITE_KEY 非空时必填）

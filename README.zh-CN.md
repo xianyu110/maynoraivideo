@@ -14,8 +14,8 @@ https://github.com/user-attachments/assets/895aab94-d0c9-474e-8d90-61a6c551e536
 
 - 前端/SSR：TanStack Start（React 19）+ Tailwind 4，`/` 英文、`/zh` 中文
 - API：Hono（`/api/*`、`/media/*`、`/sitemap.xml`、`/robots.txt`、IndexNow key 文件），入口 `src/server.ts`
-- 支付：Waffo Pancake（默认）、Dodo Payments，均为 MoR；`mock` 仅用于本地和 e2e
-- 视频：fal.ai queue API（默认），可选 [yir.ai](https://yir.ai/?ref=qianshuixia) 网关；`mock` 仅用于本地和 e2e。见下文“视频服务商”
+- 支付：Stripe（Checkout + 积分，与 ShipAny 同套路）、Waffo Pancake / Dodo Payments（后两者为 MoR）；`mock` 仅用于本地和 e2e
+- 视频：TryAllAPI（tryallapi.com）、fal.ai queue API（默认），可选 [yir.ai](https://yir.ai/?ref=qianshuixia) 网关；`mock` 仅用于本地和 e2e。见下文“视频服务商”
 - 已具备：
   - 用户与积分：Google 登录（含 One Tap）、积分包、月付和年付订阅、积分流水、个人中心（视频/账单/设置/兑换码/邀请链接/注销/导出我的数据）；账单显示实付与退款，订单和积分流水可分页加载，每笔订单有可打印的详情页（税务发票由支付商出具）
   - 订单与生成：订单与部分/全额退款回收、生成任务队列（含死信队列）与失败退积分
@@ -29,7 +29,7 @@ https://github.com/user-attachments/assets/895aab94-d0c9-474e-8d90-61a6c551e536
   - 运维与安全：后台免部署切换维护模式、全站公告和每日生成上限；健康检查告警邮件、付款即时通知（Telegram、飞书、Discord 等）、D1 每日备份到 R2、前端错误上报到 Workers 日志、CSP（Report-Only，每次请求一个 nonce）与 Permissions-Policy
   - 内容与 SEO：one-page 首页（How it works / What is 区块，可选的痛点和“自己拍 vs 用本站”对比区块）、可扩展的文章集合（`/guides` 列表页、相关文章）、法律页、联系表单；SSR 输出完整的 canonical、hreflang、JSON-LD 和 sitemap；文案按语言拆包；`npm run seo:check` 检查全站
 
-功能建议与后续规划见 [docs/SAAS_VIDEO_FEATURES.md](docs/SAAS_VIDEO_FEATURES.md) 和 [ROADMAP.md](ROADMAP.md)。SEO 规则、关键词规划和审计结果见 [docs/SEO_AUDIT.md](docs/SEO_AUDIT.md)。全部环境变量和 `site.ts` 上线字段见 [docs/env.md](docs/env.md)，新增支付商的步骤与 webhook 返回码约定见 [docs/payments.md](docs/payments.md)，订阅的开关、套餐和支付商配置见 [docs/subscriptions.md](docs/subscriptions.md)，改代码前的约定（积分、支付入账、双语文案、迁移、e2e）见 [AGENTS.md](AGENTS.md)。
+功能建议与后续规划见 [docs/SAAS_VIDEO_FEATURES.md](docs/SAAS_VIDEO_FEATURES.md) 和 [ROADMAP.md](ROADMAP.md)。SEO 规则、关键词规划和审计结果见 [docs/SEO_AUDIT.md](docs/SEO_AUDIT.md)。全部环境变量和 `site.ts` 上线字段见 [docs/env.md](docs/env.md)，新增支付商的步骤与 webhook 返回码约定见 [docs/payments.md](docs/payments.md)；快速栈说明（含 Stripe / TryAllAPI）：[docs/STACK.md](docs/STACK.md)，订阅的开关、套餐和支付商配置见 [docs/subscriptions.md](docs/subscriptions.md)，改代码前的约定（积分、支付入账、双语文案、迁移、e2e）见 [AGENTS.md](AGENTS.md)。
 
 ## 本地开发
 
@@ -129,7 +129,7 @@ npx wrangler r2 object put <name>-media/templates/<file>.mp4 --file seed/templat
 ```
 
 - `ratelimits[].namespace_id` 在同一账号内要唯一，多个站点不要共用同一组数字。
-- 密钥：`SESSION_SECRET`、`GOOGLE_CLIENT_SECRET`、`WAFFO_MERCHANT_ID`、`WAFFO_PRIVATE_KEY`、`DODO_API_KEY`、`DODO_WEBHOOK_SECRET`、`FAL_KEY`；按需加 `YIR_API_KEY`（`VIDEO_PROVIDER=yir`）、`OPENAI_API_KEY`（图片审核）、`TURNSTILE_SECRET_KEY`。可以逐个 `npx wrangler secret put <NAME>`，也可以用 `scripts/sync-secrets.mjs` 一次同步：
+- 密钥：`SESSION_SECRET`、`GOOGLE_CLIENT_SECRET`、`WAFFO_MERCHANT_ID`、`WAFFO_PRIVATE_KEY`、`DODO_API_KEY`、`DODO_WEBHOOK_SECRET`、`STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`FAL_KEY`；按需加 `YIR_API_KEY`（`VIDEO_PROVIDER=yir`）、`TRYALLAPI_API_KEY`（`VIDEO_PROVIDER=tryallapi`）、`OPENAI_API_KEY`（图片审核）、`TURNSTILE_SECRET_KEY`。可以逐个 `npx wrangler secret put <NAME>`，也可以用 `scripts/sync-secrets.mjs` 一次同步：
   ```bash
   cp .dev.vars.example .dev.vars.production     # 填上线用的值；.dev.vars.* 已被 .gitignore 忽略
   node scripts/sync-secrets.mjs                 # 只出计划：新增、已存在、只在远端、同步后仍缺，不打印任何值
@@ -193,6 +193,7 @@ SMOKE_BASE_URL=https://video-template-staging.<子域名>.workers.dev SMOKE_EXPE
 | Google OAuth | Google Cloud Console → Authorized redirect URIs | `https://<domain>/api/auth/google/callback` |
 | Waffo Pancake | Dashboard → Settings → Webhooks | `https://<domain>/api/webhooks/waffo` |
 | Dodo Payments | Dashboard → Webhooks | `https://<domain>/api/webhooks/dodo` |
+| Stripe | Dashboard → Developers → Webhooks | `https://<domain>/api/webhooks/stripe` |
 | fal.ai | 代码自动带上 | `https://<domain>/api/webhooks/fal` |
 | yir.ai | 代码自动带上（只有 https 地址才带，本地开发靠轮询） | `https://<domain>/api/webhooks/yir` |
 
@@ -210,6 +211,8 @@ SMOKE_BASE_URL=https://video-template-staging.<子域名>.workers.dev SMOKE_EXPE
   - webhook 由 Svix 投递。支付事件的 metadata（`orderId` 等）会原样回传；退款事件不带 metadata，靠 `payment_id` 反查订单。隧道换域名后用 `--webhook-id` 改 URL，签名密钥不变。
   - 支付成功或失败都会跳回 `return_url`，并追加 `payment_id`、`status`、`email`（买家邮箱）。GA4 的 `page_location` 已去掉 email。
   - 收银台显示的商户名取自 Dodo 注册信息。上 live 前在后台改成品牌名。
+- **Stripe**：`PAYMENT_PROVIDER=stripe`，`STRIPE_ENVIRONMENT=test|live`，`STRIPE_PRODUCTS` 填各套餐的 Price ID（`price_…`）。密钥 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`。回调见上表；事件列表与入账规则见 [docs/payments.md](docs/payments.md) 与 [docs/STACK.md](docs/STACK.md)。Stripe 不是 MoR，税费发票需自理。
+
 - **fal、yir**：webhook 只当作“该查一下了”的信号，结果总是用 `FAL_KEY` 或 `YIR_API_KEY` 重新拉取。另外每 5 分钟的 Cron 会补查卡住的任务，超过 45 分钟判失败并退积分。
 
 ## 关键设计
@@ -254,7 +257,9 @@ SMOKE_BASE_URL=https://video-template-staging.<子域名>.workers.dev SMOKE_EXPE
   - fal 按帧计费，16 帧算 1 个视频秒，480p 为 $0.04/视频秒（[价格](https://fal.ai/models/fal-ai/wan/v2.2-14b/animate/replace)）。模板源视频是 24fps，所以成片每秒 6 美分，18 秒约 $1.08。换模型、分辨率或源视频帧率时更新 `costCentsPerVideoSecond` 和 `sourceFps`。
   - 出片后才被判失败的任务（超时、管理员判失败）照样记成本；没出片的失败任务不记。mock 记 0。
   - 后台概览显示近 30 天的服务商成本、消耗积分折算的收入和估算毛利；生成列表逐条显示成本和毛利。每积分实收 = USD 已支付订单的净实收 ÷ 未回收的积分。实际扣费以服务商账单为准。
-- **视频服务商**：`VIDEO_PROVIDER` 可选 `fal`（默认）、`yir` 或 `mock`。[yir.ai](https://yir.ai/?ref=qianshuixia) 是图片视频 API 网关，启用方法：`VIDEO_PROVIDER=yir`，secret 写 `YIR_API_KEY`，模型和提示词在 `site.video.yir` 里改（`src/server/video/yir.ts`）。
+- **视频服务商**：`VIDEO_PROVIDER` 可选 `fal`（默认）、`yir`、`tryallapi` 或 `mock`。
+  - **TryAllAPI**（`VIDEO_PROVIDER=tryallapi`）：[tryallapi.com](https://tryallapi.com/) 聚合 API。配置 `TRYALLAPI_API_KEY`（可选 `TRYALLAPI_BASE_URL`）。模型/提示词在 `site.video.tryallapi`。提交走 `POST /v1/video/generations`，用户照片作 `image`；仅当模型支持参考视频时把 `passSourceVideo` 设为 `true`。详见 [docs/STACK.md](docs/STACK.md)。
+  - [yir.ai](https://yir.ai/?ref=qianshuixia) 是图片视频 API 网关，启用方法：`VIDEO_PROVIDER=yir`，secret 写 `YIR_API_KEY`，模型和提示词在 `site.video.yir` 里改（`src/server/video/yir.ts`）。
   - yir 没有模板所用的角色替换模型（`wan/v2.2-14b/animate/replace`）。接入用的是 Kling 2.6 Motion Control（reference 模式：照片 + 模板源视频），模板只交付接入代码，没有用真实 key 实测（提交、状态查询和错误映射由单元测试覆盖），效果和单价要自己验证，`costCentsPerSecond: 7` 只是估算，上线前按 [yir 模型页](https://yir.ai/models) 的报价改。
   - 提交时用任务 id 作 `Idempotency-Key`：队列重投或 Worker 中断后重新提交，拿回的是同一个 yir 任务，不会重复计费。yir 按请求体识别同一请求，所以照片签名地址按任务创建时间生成，有效期 2 小时，重新提交时地址不变。
   - 没有用 `max_cost` 给单个任务封顶：yir 对用 URL 引用的素材拒绝 `max_cost`。Motion Control 按参考视频秒数计费，而模板源视频的时长是固定的，单价本身就有上限。整体花费建议在 yir Console 给这个 API Key 设月度额度，超出后提交返回 `YIR_SPEND_LIMIT_EXCEEDED`。

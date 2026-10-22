@@ -56,6 +56,21 @@ describe('checkConfig', () => {
     expect(checkConfig(dodo)).toEqual([expect.objectContaining({ level: 'error', key: 'DODO_WEBHOOK_SECRET' })])
     expect(keys(ready({ vars: { VIDEO_PROVIDER: 'yir' } }))).toEqual(['error:YIR_API_KEY'])
     expect(keys(ready({ vars: { VIDEO_PROVIDER: 'yir' }, secrets: { YIR_API_KEY: 'y' } }))).toEqual([])
+    expect(keys(ready({ vars: { VIDEO_PROVIDER: 'tryallapi' } }))).toEqual(['error:TRYALLAPI_API_KEY'])
+    expect(keys(ready({ vars: { VIDEO_PROVIDER: 'tryallapi' }, secrets: { TRYALLAPI_API_KEY: 't' } }))).toEqual([])
+    const stripe = ready({
+      vars: { PAYMENT_PROVIDER: 'stripe', STRIPE_ENVIRONMENT: 'live', STRIPE_PRODUCTS: '{"starter":"price_1","party":"price_2"}' },
+      secrets: { STRIPE_SECRET_KEY: 'sk' },
+    })
+    expect(checkConfig(stripe)).toEqual([expect.objectContaining({ level: 'error', key: 'STRIPE_WEBHOOK_SECRET' })])
+    expect(
+      keys(
+        ready({
+          vars: { PAYMENT_PROVIDER: 'stripe', STRIPE_ENVIRONMENT: 'live', STRIPE_PRODUCTS: '{"starter":"price_1","party":"price_2"}' },
+          secrets: { STRIPE_SECRET_KEY: 'sk', STRIPE_WEBHOOK_SECRET: 'whsec' },
+        }),
+      ),
+    ).toEqual([])
     expect(keys(ready({ secrets: { SESSION_SECRET: 'change-me-to-a-long-random-string' } }))).toEqual(['error:SESSION_SECRET'])
     expect(keys(ready({ secrets: { SESSION_SECRET: ' ' } }))).toEqual(['error:SESSION_SECRET'])
     expect(keys(ready({ secrets: { SESSION_SECRET: true } }))).toEqual([])
@@ -90,6 +105,11 @@ describe('checkConfig', () => {
     // Dodo 的客户门户不需要额外配置
     const dodo = ready({ vars: { PAYMENT_PROVIDER: 'dodo', DODO_ENVIRONMENT: 'live', DODO_PRODUCTS: '{"starter":"p1","party":"p2","monthly":"p3","yearly":"p4"}' }, secrets: { DODO_API_KEY: 'k', DODO_WEBHOOK_SECRET: 's' } })
     expect(keys({ ...dodo, planIds: ['monthly', 'yearly'] })).toEqual([])
+    const stripePlans = ready({
+      vars: { PAYMENT_PROVIDER: 'stripe', STRIPE_ENVIRONMENT: 'live', STRIPE_PRODUCTS: '{"starter":"p1","party":"p2","monthly":"p3","yearly":"p4"}' },
+      secrets: { STRIPE_SECRET_KEY: 'k', STRIPE_WEBHOOK_SECRET: 's' },
+    })
+    expect(keys({ ...stripePlans, planIds: ['monthly', 'yearly'] })).toEqual([])
   })
 
   it('域名不一致、站点和邮箱仍是占位值、缺绑定', () => {

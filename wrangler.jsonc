@@ -15,9 +15,9 @@
   "vars": {
     "APP_ENV": "development",
     "SITE_URL": "http://localhost:3000",
-    // waffo | dodo | mock（mock 只允许非 production）
+    // waffo | dodo | stripe | mock（mock 只允许非 production）
     "PAYMENT_PROVIDER": "mock",
-    // fal | yir | mock（mock 只允许非 production）
+    // fal | yir | tryallapi | mock（mock 只允许非 production）
     "VIDEO_PROVIDER": "mock",
     // 管理员邮箱（逗号分隔）：登录即为管理员，同时接收举报、留言提醒和系统告警
     "ADMIN_EMAILS": "admin@example.com",
@@ -30,6 +30,10 @@
     // 每个积分包、订阅套餐对应支付商的 product id（JSON：{"starter":"PROD_xxx","monthly":"PROD_yyy",...}）
     "WAFFO_PRODUCTS": "{}",
     "DODO_PRODUCTS": "{}",
+    // Stripe Price id（price_xxx），与积分包/订阅套餐 id 对应
+    "STRIPE_PRODUCTS": "{}",
+    // test | live（与密钥 sk_test_/sk_live_ 一致；production 下 test 会告警）
+    "STRIPE_ENVIRONMENT": "test",
     "GOOGLE_CLIENT_ID": "",
     // Cloudflare Turnstile 站点密钥（公开）；留空 = 不启用。启用时必须同时 `wrangler secret put TURNSTILE_SECRET_KEY`
     "TURNSTILE_SITE_KEY": "",

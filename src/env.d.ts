@@ -4,4 +4,8 @@ interface Env {
   OPENAI_API_KEY?: string
   YIR_API_KEY?: string
   PAYMENT_NOTIFY_WEBHOOK_URL?: string
+  STRIPE_SECRET_KEY?: string
+  STRIPE_WEBHOOK_SECRET?: string
+  TRYALLAPI_API_KEY?: string
+  TRYALLAPI_BASE_URL?: string
 }

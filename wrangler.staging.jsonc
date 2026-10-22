@@ -32,6 +32,10 @@
     // test 店铺的商品 id，与 .dev.vars 中的值相同
     "WAFFO_PRODUCTS": "{}",
     "DODO_PRODUCTS": "{}",
+    // Stripe Price id（price_xxx），与积分包/订阅套餐 id 对应
+    "STRIPE_PRODUCTS": "{}",
+    // test | live（与密钥 sk_test_/sk_live_ 一致；production 下 test 会告警）
+    "STRIPE_ENVIRONMENT": "test",
     "GOOGLE_CLIENT_ID": "",
     "TURNSTILE_SITE_KEY": "",
     // 有 OPENAI_API_KEY 后改为 openai

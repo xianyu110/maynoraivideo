@@ -1,5 +1,6 @@
 import { ApiError, isProduction } from '../util'
 import { createFalProvider } from './fal'
+import { createTryAllApiProvider } from './tryallapi'
 import { createYirProvider } from './yir'
 import type { VideoProvider } from './types'
 
@@ -26,6 +27,7 @@ function createMockProvider(): VideoProvider {
 export function activeVideoProviderId(env: Env): VideoProvider['id'] {
   if (env.VIDEO_PROVIDER === 'fal') return 'fal'
   if (env.VIDEO_PROVIDER === 'yir') return 'yir'
+  if (env.VIDEO_PROVIDER === 'tryallapi') return 'tryallapi'
   if (env.VIDEO_PROVIDER === 'mock' && !isProduction(env)) return 'mock'
   throw new ApiError(503, 'video_not_configured', `Unsupported VIDEO_PROVIDER: ${env.VIDEO_PROVIDER}`)
 }
@@ -33,6 +35,7 @@ export function activeVideoProviderId(env: Env): VideoProvider['id'] {
 export function getVideoProvider(env: Env, id: string = activeVideoProviderId(env)): VideoProvider {
   if (id === 'fal') return createFalProvider(env)
   if (id === 'yir') return createYirProvider(env)
+  if (id === 'tryallapi') return createTryAllApiProvider(env)
   if (id === 'mock' && !isProduction(env)) return createMockProvider()
   throw new ApiError(503, 'video_not_configured', `Unsupported video provider: ${id}`)
 }

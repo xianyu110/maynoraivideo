@@ -66,6 +66,20 @@ export const site = {
       // 填渠道 ID（如 ['official'] 只走 Kling 官方）则只在这些渠道里选，全部失败时任务失败。隐私政策要写明实际经过的渠道
       routingOnly: null as readonly string[] | null,
     },
+    // TryAllAPI（VIDEO_PROVIDER=tryallapi）：聚合站模型名以控制台「模型广场」为准，例如 aigc-video-hailuo / sora-2
+    tryallapi: {
+      model: 'aigc-video-hailuo',
+      prompt:
+        'The person in the reference image performs the exact dance moves from the viral template video. Keep their face, hair, body shape and outfit identical. Smooth motion, vertical 9:16.',
+      resolution: '720p',
+      size: '720x1280',
+      // 估算成本（美分/秒），只用于后台毛利；实际以 TryAllAPI 账单为准
+      costCentsPerSecond: 8,
+      // true：额外把模板源视频 URL 放进 video / input_reference（仅当所选模型支持参考视频时打开）
+      passSourceVideo: false,
+      // 透传到 metadata 的额外字段（模型专属参数）
+      extra: {} as Record<string, unknown>,
+    },
   },
 
   durations: [

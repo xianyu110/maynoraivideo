@@ -18,13 +18,15 @@
 | --- | --- | --- | --- |
 | `APP_ENV` | `development`、`staging`、`production` | 是 | production 和 staging 下禁用 mock 服务商、开发登录和 `/api/dev/*`，Cookie 加 `Secure`。只有 production 允许搜索引擎抓取 |
 | `SITE_URL` | `https://<domain>` | 是 | 用于 canonical、sitemap、邮件链接、视频服务商回调地址和 CSRF 同源校验。production 下要和 `site.domain` 是同一个站点 |
-| `PAYMENT_PROVIDER` | `waffo`、`dodo`、`mock` | 是 | 新订单用哪个支付商。旧订单的退款和查单仍找原来的支付商。`mock` 只能在本地使用 |
+| `PAYMENT_PROVIDER` | `waffo`、`dodo`、`stripe`、`mock` | 是 | 新订单用哪个支付商。旧订单的退款和查单仍找原来的支付商。`mock` 只能在本地使用 |
 | `WAFFO_ENVIRONMENT` | `test`、`prod` | 用 Waffo 时 | 决定 API 地址和验签公钥；webhook 里的 `mode` 和它不一致时拒收 |
 | `WAFFO_PRODUCTS` | JSON，如 `{"starter":"PROD_xxx"}` | 用 Waffo 时 | 每个积分包和订阅套餐（`site.packages[].id`、`site.plans[].id`）对应的商品 ID，缺任何一个都报错（关掉订阅开关时不检查套餐，但已有订阅续费还要用，别删）。`scripts/waffo-setup.mjs` 可以生成 |
 | `WAFFO_STORE_ID` | Waffo 的店铺 ID，如 `STO_xxx` | 用 Waffo 且开了订阅时 | 账单页“管理付款”的客户门户要用，空着时扣款失败的用户没法换卡。`waffo-setup.mjs --write-dev-vars` 会一起写入 |
 | `DODO_ENVIRONMENT` | `test`、`live` | 用 Dodo 时 | 决定 API 地址 |
 | `DODO_PRODUCTS` | 同上 | 用 Dodo 时 | `scripts/dodo-setup.mjs` 可以生成 |
-| `VIDEO_PROVIDER` | `fal`、`yir`、`mock` | 是 | 模型和单价在 `site.video` 里配置，yir 的配置在 `site.video.yir` |
+| `STRIPE_ENVIRONMENT` | `test`、`live` | 用 Stripe 时 | 应与 `sk_test_` / `sk_live_` 密钥一致；production 下仍是 test 会告警 |
+| `STRIPE_PRODUCTS` | JSON，如 `{"starter":"price_xxx"}` | 用 Stripe 时 | 每个积分包和订阅套餐对应的 **Price ID**（`price_…`，不是 Product ID）。在 Stripe Dashboard → Products 创建商品与价格后填入 |
+| `VIDEO_PROVIDER` | `fal`、`yir`、`tryallapi`、`mock` | 是 | 模型和单价在 `site.video` 里配置；yir → `site.video.yir`，tryallapi → `site.video.tryallapi` |
 | `MODERATION_PROVIDER` | `openai`、`none`、`mock` | 是 | 上传图片的审核方式。`none` 不审核，检查时给出警告 |
 | `GOOGLE_CLIENT_ID` | OAuth Client ID | 是 | 站点只有 Google 登录，留空就没人能登录 |
 | `TURNSTILE_SITE_KEY` | 站点密钥 | 否 | 留空则留言和举报表单不做人机校验，检查时给出警告 |
@@ -39,8 +41,10 @@
 | `GOOGLE_CLIENT_SECRET` | 配了 `GOOGLE_CLIENT_ID` | |
 | `WAFFO_MERCHANT_ID`、`WAFFO_PRIVATE_KEY` | `PAYMENT_PROVIDER=waffo` | 私钥支持 PKCS1 和 PKCS8，可以写成一行，换行用 `\n`。验签公钥已内置在代码里 |
 | `DODO_API_KEY`、`DODO_WEBHOOK_SECRET` | `PAYMENT_PROVIDER=dodo` | API 密钥需要的权限见 README 的“第三方回调地址”；卖订阅还要 Subscriptions 读写和 Customers 写入，见 [subscriptions.md](subscriptions.md) |
+| `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET` | `PAYMENT_PROVIDER=stripe` | 可选 secret，类型在 `src/env.d.ts`。Secret Key 用 `sk_test_` / `sk_live_`；Webhook Signing Secret 用 `whsec_…`（Dashboard → Developers → Webhooks） |
 | `FAL_KEY` | `VIDEO_PROVIDER=fal` | |
 | `YIR_API_KEY` | `VIDEO_PROVIDER=yir` | 可选 secret，类型声明在 `src/env.d.ts`。建议在 yir Console 给这个 Key 设月度额度，见 README 的“视频服务商” |
+| `TRYALLAPI_API_KEY` | `VIDEO_PROVIDER=tryallapi` | 可选 secret。在 https://tryallapi.com/console/token 创建。可选 `TRYALLAPI_BASE_URL`（默认 `https://tryallapi.com`） |
 | `OPENAI_API_KEY` | `MODERATION_PROVIDER=openai` | 可选 secret，类型声明在 `src/env.d.ts` |
 | `TURNSTILE_SECRET_KEY` | 配了 `TURNSTILE_SITE_KEY` | 同上 |
 | `PAYMENT_NOTIFY_WEBHOOK_URL` | 可选 | 每笔订单首次入账（含后台补单）时往聊天群发一条付款消息：金额、套餐、积分、来源和订单号。按域名识别：Telegram 填 `https://api.telegram.org/bot<token>/sendMessage?chat_id=<id>`；飞书 / Lark 填自定义机器人地址（不要开“签名校验”，可以用关键词“新付款”）；Discord 填频道 webhook；其他地址（如 Slack Incoming Webhook）发 `{"text": ...}`。发送失败只记日志，不影响入账。地址里带 token，所以放 secret。可选 secret，类型声明在 `src/env.d.ts` |

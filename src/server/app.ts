@@ -26,6 +26,7 @@ import { seoRoutes } from './seo'
 import { assertShareable, findSharedGeneration, loadShare, readSharePoster, startShare, stopShare } from './shares'
 import { notifyContactMessage, runTakedownReminders } from './notifications'
 import { normalizeDodoEvent, verifyDodoWebhook } from './payments/dodo'
+import { normalizeStripeEvent, verifyStripeWebhook } from './payments/stripe'
 import { getOrderProvider, getPaymentProvider, mockPaidKey } from './payments'
 import type { PaymentEvent } from './payments/types'
 import { WebhookVerificationError } from './payments/types'
@@ -782,9 +783,16 @@ app.post('/api/webhooks/dodo', async (c) => {
   return c.json({ received: true, ...result })
 })
 
-// 视频服务商完成回调（fal、yir）：只当作“立即轮询”的信号，真实结果由 jobs.ts 用 API key 拉取，
-// 所以只校验地址里的任务 token，不验 yir 的签名头
-for (const provider of ['fal', 'yir']) {
+app.post('/api/webhooks/stripe', async (c) => {
+  const raw = await c.req.text()
+  const payload = await verifyStripeWebhook(raw, c.req.header('stripe-signature'), c.env.STRIPE_WEBHOOK_SECRET)
+  const result = await processPaymentEvent(c.env, 'stripe', normalizeStripeEvent(payload), raw)
+  return c.json({ received: true, ...result })
+})
+
+// 视频服务商完成回调（fal、yir、tryallapi）：只当作“立即轮询”的信号，真实结果由 jobs.ts 用 API key 拉取，
+// 所以只校验地址里的任务 token，不验上游签名头
+for (const provider of ['fal', 'yir', 'tryallapi']) {
   app.post(`/api/webhooks/${provider}`, async (c) => {
     const generationId = c.req.query('gen') ?? ''
     const token = c.req.query('token') ?? ''
