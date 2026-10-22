@@ -206,3 +206,72 @@ function insertLedger(db: D1Database, entry: LedgerEntry, now: string) {
 function recomputeBalance(db: D1Database, userId: string) {
   return db.prepare('UPDATE users SET credits = (SELECT COALESCE(SUM(remaining), 0) FROM credit_grants WHERE user_id = ?1) WHERE id = ?1').bind(userId)
 }
+
+// 补救失败任务未退积分：正常路径 failGeneration 会原子置 failed+refunded 并写流水；
+// 这里兜底两类异常数据（手工改库、历史版本、事务边缘）：
+// 1) status=failed 但 refunded=0 → 先标记再退
+// 2) refunded=1 但没有 generation_refund 流水 → 只补退
+// 幂等：流水 idempotency_key 冲突则整批回滚，不重复加积分；不发邮件避免打扰
+export async function repairMissingGenerationRefunds(db: D1Database, limit = 50) {
+  const now = nowIso()
+  const unmarked = await db
+    .prepare(
+      `SELECT id FROM generations WHERE status = 'failed' AND refunded = 0 ORDER BY updated_at LIMIT ?`,
+    )
+    .bind(limit)
+    .all<{ id: string }>()
+
+  let repaired = 0
+  for (const row of unmarked.results) {
+    try {
+      await db.batch([
+        db
+          .prepare(
+            `UPDATE generations SET refunded = 1, updated_at = ? WHERE id = ? AND status = 'failed' AND refunded = 0`,
+          )
+          .bind(now, row.id),
+        ...generationRefundStatements(db, row.id, 'repair_refund', now),
+      ])
+      repaired += 1
+    } catch (error) {
+      // 流水已存在但 refunded 仍为 0：只补标记，避免永远卡在 UNIQUE
+      if (error instanceof Error && /UNIQUE constraint failed/i.test(error.message)) {
+        const marked = await db
+          .prepare(
+            `UPDATE generations SET refunded = 1, updated_at = ? WHERE id = ? AND status = 'failed' AND refunded = 0
+             AND EXISTS (SELECT 1 FROM credit_ledger WHERE idempotency_key = 'generation_refund:' || ?)`,
+          )
+          .bind(now, row.id, row.id)
+          .run()
+        if (marked.meta.changes) repaired += 1
+        continue
+      }
+      throw error
+    }
+  }
+
+  const missingLedger = await db
+    .prepare(
+      `SELECT g.id FROM generations g
+       WHERE g.status = 'failed' AND g.refunded = 1
+         AND NOT EXISTS (
+           SELECT 1 FROM credit_ledger l WHERE l.idempotency_key = 'generation_refund:' || g.id
+         )
+       ORDER BY g.updated_at LIMIT ?`,
+    )
+    .bind(limit)
+    .all<{ id: string }>()
+
+  for (const row of missingLedger.results) {
+    try {
+      await db.batch(generationRefundStatements(db, row.id, 'repair_refund', now))
+      repaired += 1
+    } catch (error) {
+      if (error instanceof Error && /UNIQUE constraint failed/i.test(error.message)) continue
+      throw error
+    }
+  }
+
+  return { checked: unmarked.results.length + missingLedger.results.length, repaired }
+}
+

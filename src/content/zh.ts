@@ -74,8 +74,8 @@ export function zh(s: S): Content {
       full: '完整版',
       creditsLabel: (n: number) => `${n} 积分`,
       consent: '照片中是我本人，或我已获得照片中人物的许可；对方已满 18 岁，且不是明星或公众人物。',
-      ctaSignUp: '免费注册，立即开始',
-      ctaGenerate: (n: number) => `生成视频 · ${n} 积分`,
+      ctaSignUp: '免费登录后开始',
+      ctaGenerate: (n: number) => `生成 · ${n} 积分`,
       ctaBuy: '购买积分后生成',
       balance: (n: number) => `余额：${n} 积分`,
       needMore: (n: number) => `该时长还差 ${n} 积分。`,
@@ -84,8 +84,8 @@ export function zh(s: S): Content {
       queued: '排队中…',
       processing: '正在生成，通常需要几分钟；你可以先离开本页。',
       succeeded: '视频已生成',
-      failed: '本次生成失败。',
-      refunded: '积分已退回你的余额。',
+      failed: '这次生成没有完成。',
+      refunded: '积分已自动退回余额，可以再试一次。',
       download: '下载 MP4',
       viewAll: '查看我的视频',
       makeAnother: '再做一个',
@@ -267,7 +267,7 @@ export function zh(s: S): Content {
       newVideo: '新建视频',
       empty: '还没有视频。到首页上传照片，制作你的第一条吧。',
       status: { queued: '排队中', processing: '生成中', succeeded: '已完成', failed: '失败', expired: '已过期', removed: '已下架' } as Record<string, string>,
-      refundedNote: '积分已退回',
+      refundedNote: '积分已自动退回',
       delete: '删除',
       confirmDelete: '确定永久删除这条视频吗？',
       download: '下载',
@@ -310,9 +310,9 @@ export function zh(s: S): Content {
         paidAt: '支付时间',
         refundedAt: '退款时间',
         provider: '支付服务商',
-        providers: { waffo: 'Waffo', dodo: 'Dodo Payments', mock: '测试收银台' } as Record<string, string>,
+        providers: { stripe: 'Stripe', waffo: 'Waffo', dodo: 'Dodo Payments', mock: '测试收银台' } as Record<string, string>,
         print: '打印',
-        invoiceNote: '付款由支付服务商作为销售方（Merchant of Record）处理，收据或税务发票由它通过邮件发送。找不到的话，请带上订单号联系客服。',
+        invoiceNote: '收据或税务发票由支付服务商通过邮件发送。找不到的话，请带上订单号联系客服。',
         mockNote: '这是本地 mock 收银台产生的测试订单，没有实际扣款，也不会开具发票。',
         unpaidNote: '这笔订单未支付成功。如果你确实被扣款了，请带上订单号联系客服。',
         contact: '联系客服',
@@ -503,7 +503,7 @@ export function zh(s: S): Content {
       account_conflict: `这个邮箱已绑定另一个 Google 账号。请用那个账号登录，或发邮件至 ${s.supportEmail} 联系我们。`,
     } as Record<string, string>,
     legal: {
-      updated: '2026-10-21',
+      updated: '2026-10-22',
       privacy: {
         title: '隐私政策',
         sections: [
@@ -537,7 +537,7 @@ export function zh(s: S): Content {
                 },
               ]
             : []),
-          { h: '服务提供方', p: [`我们只使用少量数据处理方：云托管、存储与邮件发送、仅为你的请求处理照片的 AI 渲染服务、内容安全分类服务，以及作为记录商户（Merchant of Record）的支付服务${ga4Id || cfBeaconToken ? '；另有上文所述的统计服务' : ''}。`] },
+          { h: '服务提供方', p: [`我们只使用少量数据处理方：云托管、存储与邮件发送、仅为你的请求处理照片的 AI 渲染服务、内容安全分类服务，以及处理结账与收据的支付服务${ga4Id || cfBeaconToken ? '；另有上文所述的统计服务' : ''}。`] },
           { h: '你的权利', p: [`你可以随时下载或删除视频，也可以在“设置”中导出个人数据（JSON）或注销账号。其他隐私请求请发送邮件至 ${s.supportEmail}。`] },
         ],
       },
@@ -551,7 +551,7 @@ export function zh(s: S): Content {
           {
             h: '积分与支付',
             p: [
-              '积分包为一次性购买。积分不可兑换现金，积分包的积分在服务运营期间不会过期。支付由作为记录商户的合作方处理，其条款同样适用。',
+              '积分包为一次性购买。积分不可兑换现金，积分包的积分在服务运营期间不会过期。支付由支付合作方处理，其条款同样适用。',
               subs
                 ? '订阅在每个计费周期（月或年）结束时按你订阅时的价格自动续费，直到你取消。你可以随时在账户的“账单”页取消，取消在当期结束时生效，当期结束前套餐仍然有效。订阅积分每月发放一次（年付按月分次发放），当月结束时作废，不累积到下月。'
                 : '',

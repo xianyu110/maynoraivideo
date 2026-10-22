@@ -23,7 +23,7 @@ export function en(s: S) {
     meta: {
       // 首页 title 不加品牌后缀：品牌通常已含关键词，控制在 60 字符内（seo:check 会校验）
       homeTitle: `${k} AI Video Generator from One Photo`,
-      homeDescription: `Upload one photo and get your own ${k} video in minutes. Same choreography, same framing, starring you. ${subs ? 'Buy credits once or subscribe monthly.' : 'Pay per video with credits that never expire.'}`,
+      homeDescription: `Make a ${k} AI video from one photo in minutes. Same moves and framing, starring you. ${subs ? 'Buy credits or subscribe — failed renders refund automatically.' : 'Credits never expire; failed renders refund automatically.'}`,
       pricingTitle: `Pricing – ${b}`,
       pricingDescription: subs
         ? `Credit packs and monthly or yearly plans for ${k} AI videos. Pack credits never expire, cancel a plan anytime, failed renders are refunded automatically.`
@@ -60,7 +60,7 @@ export function en(s: S) {
     },
     hero: {
       title: `${k} AI Video Generator`,
-      subtitle: `Turn a single selfie into your own take on the ${k} clip. We keep the choreography, timing and framing of the original and cast you as the lead.`,
+      subtitle: `Upload one selfie and step into the ${k} clip. Same choreography, timing and framing — you as the lead.`,
       badge: `Trending on ${s.trendPlatform}`,
       original: 'Original',
       aiVersion: 'AI version',
@@ -82,18 +82,18 @@ export function en(s: S) {
       full: 'full',
       creditsLabel: (n: number) => `${n} credits`,
       consent: 'This photo is of me, or I have permission from the person in it. They are 18 or older and not a celebrity or public figure.',
-      ctaSignUp: 'Sign up free and start',
-      ctaGenerate: (n: number) => `Generate video · ${n} credits`,
-      ctaBuy: 'Get credits to generate',
+      ctaSignUp: 'Sign in free to start',
+      ctaGenerate: (n: number) => `Generate · ${n} credits`,
+      ctaBuy: 'Buy credits to generate',
       balance: (n: number) => `Balance: ${n} credits`,
       needMore: (n: number) => `You need ${n} more credits for this length.`,
       needPhoto: 'Add a photo first.',
       needConsent: 'Please confirm the consent box.',
       queued: 'In the queue…',
-      processing: 'Rendering your video. This usually takes a few minutes; you can leave this page.',
+      processing: 'Rendering your video. Most finish in a few minutes — you can leave this page.',
       succeeded: 'Your video is ready',
-      failed: 'This render failed.',
-      refunded: 'The credits have been returned to your balance.',
+      failed: 'This render didn’t finish.',
+      refunded: 'Credits were returned to your balance automatically. You can try again.',
       download: 'Download MP4',
       viewAll: 'Open My videos',
       makeAnother: 'Make another',
@@ -230,7 +230,7 @@ export function en(s: S) {
           a: 'A recent photo of one person facing the camera, with even light and the head and shoulders in frame. Group shots, sunglasses and strong filters lower the quality.',
           guide: { article: 'howTo', label: `Photo tips for a better ${k} AI video` },
         },
-        { q: 'How long does a render take?', a: 'Most videos finish in 2–8 minutes depending on length and queue. You can close the page; finished videos wait in My videos.' },
+        { q: 'How long does a render take?', a: 'Most videos finish in 2–8 minutes, depending on length and queue. You can close the page — finished clips wait in My videos. If a render fails, credits are refunded automatically.' },
         {
           q: 'How do credits work?',
           a: subs
@@ -287,7 +287,7 @@ export function en(s: S) {
       newVideo: 'New video',
       empty: 'No videos yet. Upload a photo on the home page to make your first one.',
       status: { queued: 'Queued', processing: 'Rendering', succeeded: 'Ready', failed: 'Failed', expired: 'Expired', removed: 'Removed' } as Record<string, string>,
-      refundedNote: 'Credits refunded',
+      refundedNote: 'Credits returned automatically',
       delete: 'Delete',
       confirmDelete: 'Delete this video permanently?',
       download: 'Download',
@@ -330,9 +330,9 @@ export function en(s: S) {
         paidAt: 'Paid on',
         refundedAt: 'Refunded on',
         provider: 'Payment processor',
-        providers: { waffo: 'Waffo', dodo: 'Dodo Payments', mock: 'Test checkout' } as Record<string, string>,
+        providers: { stripe: 'Stripe', waffo: 'Waffo', dodo: 'Dodo Payments', mock: 'Test checkout' } as Record<string, string>,
         print: 'Print',
-        invoiceNote: 'Payments are handled by our payment processor as the merchant of record, and it emails your receipt or tax invoice. Can’t find it? Contact support with this order ID.',
+        invoiceNote: 'Your receipt or tax invoice is emailed by our payment processor. Can’t find it? Contact support with this order ID.',
         mockNote: 'This is a test order from the local mock checkout. No money was charged and no invoice is issued.',
         unpaidNote: 'This order was not paid. If you were charged anyway, contact support with this order ID.',
         contact: 'Contact support',
@@ -528,7 +528,7 @@ export function en(s: S) {
       account_conflict: `This email is linked to a different Google account. Sign in with that account, or email ${s.supportEmail} for help.`,
     } as Record<string, string>,
     legal: {
-      updated: '2026-10-21',
+      updated: '2026-10-22',
       privacy: {
         title: 'Privacy Policy',
         sections: [
@@ -562,7 +562,7 @@ export function en(s: S) {
                 },
               ]
             : []),
-          { h: 'Service providers', p: [`We rely on a small number of processors: cloud hosting, storage and email delivery, an AI rendering provider that processes your photo only for your request, a content-safety classifier, a payment provider acting as merchant of record${ga4Id || cfBeaconToken ? ', and the analytics services described above' : ''}.`] },
+          { h: 'Service providers', p: [`We rely on a small number of processors: cloud hosting, storage and email delivery, an AI rendering provider that processes your photo only for your request, a content-safety classifier, and a payment provider that handles checkout and receipts${ga4Id || cfBeaconToken ? ', plus the analytics services described above' : ''}.`] },
           { h: 'Your rights', p: [`You can download or delete your videos at any time. In Settings you can export a copy of your data as JSON or delete your account. For any other privacy request, email ${s.supportEmail}.`] },
         ],
       },
@@ -576,7 +576,7 @@ export function en(s: S) {
           {
             h: 'Credits and payments',
             p: [
-              'Credit packs are one-time purchases. Credits have no cash value, and credits from packs do not expire while the service is operating. Payments are processed by our merchant-of-record partner, whose terms also apply.',
+              'Credit packs are one-time purchases. Credits have no cash value, and credits from packs do not expire while the service is operating. Payments are processed by our payment partner, whose terms also apply.',
               subs
                 ? 'Subscriptions renew automatically at the end of each billing period (monthly or yearly) at the price you subscribed at, until you cancel. You can cancel at any time under Billing in your account; cancellation takes effect at the end of the current period and you keep your plan until then. Subscription credits are added once a month (yearly plans receive them month by month), expire at the end of that month and do not roll over.'
                 : '',

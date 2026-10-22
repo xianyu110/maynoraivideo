@@ -1,6 +1,6 @@
 import { findDuration } from '#/config/site'
 import { jobToken, signedUploadUrl, templateSourceUrl } from './media'
-import { expireStatements, generationRefundStatements } from './credits'
+import { expireStatements, generationRefundStatements, repairMissingGenerationRefunds } from './credits'
 import { notifyGenerationFinished } from './notifications'
 import { reconcilePendingOrders } from './reconcile'
 import type { GenerationRow, UploadRow, VideoJobMessage } from './types'
@@ -285,6 +285,9 @@ export async function runScheduledMaintenance(env: Env) {
       await failGeneration(env, generation.id, 'submit_failed', 'Provider submission did not complete')
     }
   }
+
+  const refundRepairs = await repairMissingGenerationRefunds(env.DB)
+  if (refundRepairs.repaired) console.log('generation refund repair', refundRepairs)
 
   const now = nowIso()
   await db.batch([

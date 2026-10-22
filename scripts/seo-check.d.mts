@@ -17,6 +17,7 @@ export interface SeoPage {
   canonical: string | null
   hreflang: string[]
   jsonLd: string[]
+  faqQuestions?: number
 }
 
 export interface SeoCheckResult {

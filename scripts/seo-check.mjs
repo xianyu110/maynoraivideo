@@ -65,16 +65,20 @@ function innerText(fragment) {
 
 function jsonLdTypes(html, report) {
   const types = []
+  let faqQuestions = 0
   // 页面上的 script 都带 CSP nonce 等属性，不能按固定写法匹配
   for (const [, body] of html.matchAll(/<script\b[^>]*\btype="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
       const data = JSON.parse(body)
-      for (const node of data['@graph'] ?? [data]) types.push(node['@type'])
+      for (const node of data['@graph'] ?? [data]) {
+        types.push(node['@type'])
+        if (node['@type'] === 'FAQPage' && Array.isArray(node.mainEntity)) faqQuestions += node.mainEntity.length
+      }
     } catch (error) {
       report('error', 'JSON-LD 无法解析', String(error))
     }
   }
-  return types
+  return { types, faqQuestions }
 }
 
 function pageKind(path) {
@@ -166,11 +170,11 @@ export async function runSeoCheck({ base = 'http://127.0.0.1:3000', production =
     const canonical = linkTags.filter((tag) => attr(tag, 'rel') === 'canonical').map((tag) => attr(tag, 'href'))
     const hreflangs = linkTags.filter((tag) => attr(tag, 'rel') === 'alternate' && attr(tag, 'hreflang')).map((tag) => attr(tag, 'hreflang'))
     const robots = metaContent(html, 'name', 'robots') ?? ''
-    const types = jsonLdTypes(html, report)
+    const { types, faqQuestions } = jsonLdTypes(html, report)
     const text = visibleText(html)
     const keyword = site.keyword.toLowerCase()
 
-    pages.push({ path, kind, title, titleWidth: displayWidth(title), descriptionWidth: displayWidth(description), h1: h1s, h2: h2s, canonical: canonical[0] ?? null, hreflang: hreflangs, jsonLd: types })
+    pages.push({ path, kind, title, titleWidth: displayWidth(title), descriptionWidth: displayWidth(description), h1: h1s, h2: h2s, canonical: canonical[0] ?? null, hreflang: hreflangs, jsonLd: types, faqQuestions })
 
     if (!/<html[^>]*\slang="[^"]+"/i.test(html)) report('error', '<html> 缺少 lang')
     if (!title) report('error', '缺少 <title>')
@@ -204,6 +208,15 @@ export async function runSeoCheck({ base = 'http://127.0.0.1:3000', production =
     if (/noindex/i.test(robots)) report('error', '公开页面带 noindex', robots)
     for (const type of REQUIRED_JSONLD[kind] ?? []) {
       if (!types.includes(type)) report('error', `缺少 JSON-LD ${type}`)
+    }
+    // 首页 FAQ 条目数：title/H1 之外核对 FAQPage 与可见 <details> 一致
+    if (kind === 'home') {
+      const visibleFaq = [...html.matchAll(/<details\b[^>]*>/gi)].length
+      if (faqQuestions < 3) report('error', `首页 FAQPage 问题数过少（${faqQuestions}）`, '至少 3 条')
+      else if (faqQuestions > 12) report('warn', `首页 FAQPage 问题数过多（${faqQuestions}）`, '建议不超过 12 条')
+      if (visibleFaq && faqQuestions && visibleFaq !== faqQuestions) {
+        report('error', '首页可见 FAQ 与 FAQPage JSON-LD 数量不一致', `可见 ${visibleFaq} / JSON-LD ${faqQuestions}`)
+      }
     }
     const imgs = [...html.matchAll(/<img\s[^>]*>/gi)].map((m) => m[0])
     const noAlt = imgs.filter((tag) => !attr(tag, 'alt'))
