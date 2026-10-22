@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-作者：[浅水虾](https://x.com/qianshuixia2026)，一只朝着深海出发的浅水虾。
+基于开源项目 [ShrimpReel（虾片）](https://github.com/qianshuixia/shrimpreel)（作者：[浅水虾](https://x.com/qianshuixia2026)）。由 maynorai 团队 改进。
 
 开源的“一张照片 → 跟拍某个爆款视频模板”AI 视频 SaaS 模板。每追一个新热词就建一个站：从本模板建仓库，改配置、文案和素材即可上线。全部跑在 Cloudflare 上：Workers + D1 + R2 + KV + Queues + Rate Limiting + Cron。
 
