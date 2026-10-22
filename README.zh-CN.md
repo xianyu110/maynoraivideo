@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/895aab94-d0c9-474e-8d90-61a6c551e536
 
 72 秒功能介绍，无声（[英文版](README.md)；MP4 文件在 [docs/media](docs/media)）。画面来自本地运行，示例站 Neon Shuffle AI 和视频素材都是占位演示。
 
-> 状态：本地全流程可用（单元测试 + Playwright e2e），尚未作为正式站点部署。哪些已用真实服务验证、哪些还没有，见 [ROADMAP.md](ROADMAP.md)。
+> 状态：本地全流程可用（单元测试 + Playwright e2e）。本仓库已接入 **Stripe Checkout/积分** 与 **TryAllAPI** 视频生成，便于开源 fork；上线前请用自己的 Stripe 测试模式与 TryAllAPI 密钥验证。英文主文档的 [Quick start](README.md#quick-start-for-open-source-users) 与 [docs/STACK.md](docs/STACK.md) 优先给 AI 视频站运营者。上游验证清单见 [ROADMAP.md](ROADMAP.md)。
 
 - 前端/SSR：TanStack Start（React 19）+ Tailwind 4，`/` 英文、`/zh` 中文
 - API：Hono（`/api/*`、`/media/*`、`/sitemap.xml`、`/robots.txt`、IndexNow key 文件），入口 `src/server.ts`
@@ -30,6 +30,17 @@ https://github.com/user-attachments/assets/895aab94-d0c9-474e-8d90-61a6c551e536
   - 内容与 SEO：one-page 首页（How it works / What is 区块，可选的痛点和“自己拍 vs 用本站”对比区块）、可扩展的文章集合（`/guides` 列表页、相关文章）、法律页、联系表单；SSR 输出完整的 canonical、hreflang、JSON-LD 和 sitemap；文案按语言拆包；`npm run seo:check` 检查全站
 
 功能建议与后续规划见 [docs/SAAS_VIDEO_FEATURES.md](docs/SAAS_VIDEO_FEATURES.md) 和 [ROADMAP.md](ROADMAP.md)。SEO 规则、关键词规划和审计结果见 [docs/SEO_AUDIT.md](docs/SEO_AUDIT.md)。全部环境变量和 `site.ts` 上线字段见 [docs/env.md](docs/env.md)，新增支付商的步骤与 webhook 返回码约定见 [docs/payments.md](docs/payments.md)；快速栈说明（含 Stripe / TryAllAPI）：[docs/STACK.md](docs/STACK.md)，订阅的开关、套餐和支付商配置见 [docs/subscriptions.md](docs/subscriptions.md)，改代码前的约定（积分、支付入账、双语文案、迁移、e2e）见 [AGENTS.md](AGENTS.md)。
+
+
+## 开源用户快速开始（Stripe + TryAllAPI）
+
+完整步骤以英文 [README Quick start](README.md#quick-start-for-open-source-users) 为准（英文为主）。要点：
+
+1. **不要提交密钥**：复制 [`.dev.vars.example`](.dev.vars.example) 为 `.dev.vars`（已 gitignore）；生产用 `wrangler secret put` 或 `scripts/sync-secrets.mjs`。
+2. **本地**：`npm install` → `cp .dev.vars.example .dev.vars`（至少设 `SESSION_SECRET`）→ `npm run seed:local` → `npm run dev -- --host 127.0.0.1`。默认 `PAYMENT_PROVIDER=mock`、`VIDEO_PROVIDER=mock`。
+3. **Stripe**：`PAYMENT_PROVIDER=stripe`，`STRIPE_PRODUCTS` 填各积分包/订阅的 **Price** id（`price_…`），密钥 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`，Webhook `https://<domain>/api/webhooks/stripe`。
+4. **TryAllAPI**：`VIDEO_PROVIDER=tryallapi`，`TRYALLAPI_API_KEY`（[控制台](https://tryallapi.com/console/token)），模型在 `site.video.tryallapi`。
+5. **部署 Cloudflare Workers**：创建 D1/R2/KV/Queues → `npm run db:migrate:remote` → 同步 secrets → 改 `wrangler.jsonc` 的 vars → `npm run doctor` → `npm run deploy`。
 
 ## 本地开发
 

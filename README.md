@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/ce92074a-2a09-4a3e-b750-4b888d12abf8
 
 A 72-second tour, no sound ([Chinese version](README.zh-CN.md); MP4 files in [docs/media](docs/media)). Screens are from a local run; the demo site "Neon Shuffle AI" and its clips are placeholders.
 
-> Status: the full flow works locally (unit tests + Playwright e2e). Stripe Checkout/credits and TryAllAPI video providers are wired in this fork-ready tree (see [docs/STACK.md](docs/STACK.md)); verify against your own Stripe test mode and TryAllAPI key before go-live. [ROADMAP.md](ROADMAP.md) lists upstream verification status. Code comments, ROADMAP and most of `docs/` are in Chinese; STACK.md and this README prefer English for AI-video site operators.
+> Status: local full flow works (unit tests + Playwright e2e). **Stripe Checkout/credits** and **TryAllAPI** are wired for open-source forks — start at [Quick start](#quick-start-for-open-source-users) and [docs/STACK.md](docs/STACK.md). Verify with your own Stripe test mode and TryAllAPI key before go-live. [ROADMAP.md](ROADMAP.md) lists upstream verification. Code comments / ROADMAP / most of `docs/` are Chinese; this README and STACK.md prefer English for AI-video operators.
 
 - Frontend/SSR: TanStack Start (React 19) + Tailwind 4. English at `/`, Chinese at `/zh`.
 - API: Hono (`/api/*`, `/media/*`, `/sitemap.xml`, `/robots.txt`, IndexNow key file); entry point `src/server.ts`.
@@ -30,6 +30,112 @@ A 72-second tour, no sound ([Chinese version](README.zh-CN.md); MP4 files in [do
   - Content and SEO: one-page home (How it works / What is, plus optional problem and "doing it yourself vs. this site" blocks), an extensible article collection (`/guides` hub, related articles), legal pages, contact form; SSR canonical, hreflang, JSON-LD and sitemap; copy is code-split per locale; `npm run seo:check` lints the whole site.
 
 Feature notes and plans: [docs/SAAS_VIDEO_FEATURES.md](docs/SAAS_VIDEO_FEATURES.md) and [ROADMAP.md](ROADMAP.md). SEO rules, keyword planning and audit results: [docs/SEO_AUDIT.md](docs/SEO_AUDIT.md). All environment variables and the launch-related `site.ts` fields: [docs/env.md](docs/env.md). Adding a payment provider and the webhook response-code contract: [docs/payments.md](docs/payments.md). Quick stack + Stripe/TryAllAPI sketch: [docs/STACK.md](docs/STACK.md). The subscription switch, plans and provider setup: [docs/subscriptions.md](docs/subscriptions.md). Conventions to follow before changing code (credits, payment fulfillment, bilingual copy, migrations, e2e): [AGENTS.md](AGENTS.md). The docs/ files and AGENTS.md are in Chinese.
+
+
+## Quick start for open-source users
+
+This repo is a **fork-ready Cloudflare Workers template** for AI “photo → viral template video” sites. English UI is primary (`/`); Chinese at `/zh`. Full feature notes stay below; this section is enough to run and ship with **Stripe + TryAllAPI**.
+
+**Never commit secrets.** Copy [`.dev.vars.example`](.dev.vars.example) → `.dev.vars` (gitignored). Production keys go only via `wrangler secret put` or `scripts/sync-secrets.mjs` from a local `.dev.vars.production` (also gitignored). Do not put API keys, webhook secrets, or private keys in `wrangler.jsonc`, `site.ts`, or the README.
+
+### 1. What you need
+
+| Piece | Choice for this path |
+| --- | --- |
+| Host | Cloudflare Workers (D1 + R2 + KV + Queues + Cron) — not Vercel |
+| Auth | Google OAuth (`GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`) |
+| Payments | `PAYMENT_PROVIDER=stripe` (Checkout + credits; not a Merchant of Record) |
+| Video | `VIDEO_PROVIDER=tryallapi` ([tryallapi.com](https://tryallapi.com/)) |
+| Local only | Defaults stay `PAYMENT_PROVIDER=mock` and `VIDEO_PROVIDER=mock` |
+
+Waffo / Dodo / fal / yir remain supported; see later sections and [docs/STACK.md](docs/STACK.md).
+
+### 2. Environment variables
+
+**Secrets** (local: `.dev.vars`; production: Wrangler secrets) — names match [`.dev.vars.example`](.dev.vars.example):
+
+| Name | When |
+| --- | --- |
+| `SESSION_SECRET` | Always (`openssl rand -hex 32`; ≥32 chars in prod/staging) |
+| `GOOGLE_CLIENT_SECRET` | With Google sign-in |
+| `STRIPE_SECRET_KEY` | `PAYMENT_PROVIDER=stripe` (`sk_test_…` / `sk_live_…`) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_…`) |
+| `TRYALLAPI_API_KEY` | `VIDEO_PROVIDER=tryallapi` ([console](https://tryallapi.com/console/token)) |
+| `TRYALLAPI_BASE_URL` | Optional; default `https://tryallapi.com` |
+
+**Non-secret `vars`** in `wrangler.jsonc` (and staging config):
+
+| Name | Example / notes |
+| --- | --- |
+| `APP_ENV` | `development` / `staging` / `production` |
+| `SITE_URL` | `https://your.domain` (must match `site.domain` in prod) |
+| `PAYMENT_PROVIDER` | `stripe` |
+| `STRIPE_ENVIRONMENT` | `test` or `live` (match the secret key) |
+| `STRIPE_PRODUCTS` | JSON map of pack/plan id → Stripe **Price** id (`price_…`), e.g. `{"starter":"price_…","monthly":"price_…"}` |
+| `VIDEO_PROVIDER` | `tryallapi` |
+| `GOOGLE_CLIENT_ID` | Public OAuth client id |
+| `ADMIN_EMAILS` | Comma-separated admin emails |
+| `MODERATION_PROVIDER` | `openai` / `none` / `mock` (local) |
+
+Full matrix: [docs/env.md](docs/env.md). Model / prompt for TryAllAPI: `site.video.tryallapi` in `src/config/site.ts`.
+
+### 3. Run locally (mock payments & video)
+
+```bash
+npm install                          # npm ≥ 11.19
+cp .dev.vars.example .dev.vars       # set SESSION_SECRET at minimum
+npm run seed:local                   # D1 migrations + seed templates → local R2
+npm run dev -- --host 127.0.0.1      # http://127.0.0.1:3000
+```
+
+- Mock checkout and mock generation: nothing is charged; template MP4 is copied as the “result”.
+- Dev login appears on the sign-in page outside production (`admin@example.com` is in `ADMIN_EMAILS` locally).
+- Bind to `127.0.0.1` only — do not expose the dev server; use `scripts/webhook-proxy.mjs` for real Stripe webhooks.
+
+### 4. Stripe + TryAllAPI (test mode)
+
+1. **Stripe Dashboard (test)**  
+   - Create Products with Prices for each `site.packages[].id` and (if subscriptions are on) each `site.plans[].id`.  
+   - Put Price ids in `STRIPE_PRODUCTS`.  
+   - Webhook endpoint: `https://<domain>/api/webhooks/stripe`  
+   - Events: `checkout.session.completed`, `invoice.payment_succeeded`, `invoice.payment_failed`, `checkout.session.expired`, `charge.refunded`, `customer.subscription.updated`, `customer.subscription.deleted`.  
+   - Set `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`.
+
+2. **TryAllAPI**  
+   - Create a key at https://tryallapi.com/console/token → `TRYALLAPI_API_KEY`.  
+   - Set `VIDEO_PROVIDER=tryallapi`. Adjust `site.video.tryallapi` (default model `aigc-video-hailuo`).  
+   - Callback (when upstream supports `webhook_url`): `https://<domain>/api/webhooks/tryallapi` (results are always re-fetched with the API key).
+
+3. **Google OAuth** redirect: `https://<domain>/api/auth/google/callback`.
+
+Local Stripe webhooks: `node scripts/webhook-proxy.mjs --port 3100`, then tunnel to that port (not the Vite port).
+
+### 5. Deploy to Cloudflare Workers
+
+```bash
+# Once per site — names must match wrangler.jsonc
+npx wrangler d1 create <name>                 # write database_id into wrangler.jsonc
+npx wrangler r2 bucket create <name>-media
+npx wrangler kv namespace create <name>-kv    # write id into wrangler.jsonc
+npx wrangler queues create <name>-jobs
+npx wrangler queues create <name>-jobs-dlq
+npm run db:migrate:remote
+npx wrangler r2 object put <name>-media/templates/<file>.mp4 \
+  --file seed/templates/<file>.mp4 --content-type video/mp4 --remote
+
+# Secrets (never committed)
+cp .dev.vars.example .dev.vars.production     # fill real values locally
+node scripts/sync-secrets.mjs                 # plan only; values never printed
+node scripts/sync-secrets.mjs --apply         # or: npx wrangler secret put <NAME>
+
+# Vars: PAYMENT_PROVIDER=stripe, VIDEO_PROVIDER=tryallapi, APP_ENV=production, SITE_URL, …
+npm run doctor                                # pre-deploy check (secret names only)
+npm run deploy                                # doctor + build + wrangler deploy
+```
+
+Attach a custom domain in the Cloudflare dashboard. Post-deploy: `SMOKE_BASE_URL=https://<domain> npm run test:smoke`.
+
+More detail: [Deploying to Cloudflare](#deploying-to-cloudflare), keyword-site scaffolder below, and [docs/STACK.md](docs/STACK.md).
 
 ## Local development
 

@@ -1,26 +1,38 @@
-# 复制为 .dev.vars（本地）；生产用 `wrangler secret put <NAME>` 写入
+# Copy to .dev.vars for local wrangler/vite (gitignored).
+# Production: never commit real values — use `npx wrangler secret put <NAME>`
+# or `node scripts/sync-secrets.mjs --apply` with a local `.dev.vars.production`.
+# Full list: docs/env.md | Quick path: Stripe + TryAllAPI (see README Quick start).
+
+# Required always (openssl rand -hex 32). Placeholder refused in prod/staging.
 SESSION_SECRET=change-me-to-a-long-random-string
+
+# Google OAuth (with GOOGLE_CLIENT_ID in wrangler.jsonc vars)
 GOOGLE_CLIENT_SECRET=
-# Waffo Pancake（默认支付）
+
+# --- Payments: set PAYMENT_PROVIDER in wrangler.jsonc ---
+# Waffo Pancake
 WAFFO_MERCHANT_ID=
 WAFFO_PRIVATE_KEY=
-# Dodo Payments（可选）
+# Dodo Payments
 DODO_API_KEY=
 DODO_WEBHOOK_SECRET=
-# Stripe（PAYMENT_PROVIDER=stripe）
+# Stripe (PAYMENT_PROVIDER=stripe) — sk_test_/sk_live_ + webhook whsec_…
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-# fal.ai 视频生成
+
+# --- Video: set VIDEO_PROVIDER in wrangler.jsonc ---
+# fal.ai
 FAL_KEY=
-# yir.ai 视频网关（VIDEO_PROVIDER=yir 时必填）
+# yir.ai (VIDEO_PROVIDER=yir)
 YIR_API_KEY=
-# TryAllAPI（VIDEO_PROVIDER=tryallapi 时必填）https://tryallapi.com/console/token
+# TryAllAPI (VIDEO_PROVIDER=tryallapi) https://tryallapi.com/console/token
 TRYALLAPI_API_KEY=
-# 可选；默认 https://tryallapi.com
+# Optional; default https://tryallapi.com
 TRYALLAPI_BASE_URL=
-# 图片审核（MODERATION_PROVIDER=openai 时必填）
+
+# Image moderation (MODERATION_PROVIDER=openai)
 OPENAI_API_KEY=
-# Turnstile（vars.TURNSTILE_SITE_KEY 非空时必填）
+# Turnstile (when vars.TURNSTILE_SITE_KEY is set)
 TURNSTILE_SECRET_KEY=
-# 付款即时通知（可选）：Telegram / 飞书 / Discord / Slack 的 webhook 地址，见 docs/env.md
+# Optional payment chat notify — see docs/env.md (Telegram / Feishu / Discord / Slack)
 PAYMENT_NOTIFY_WEBHOOK_URL=
