@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Based on open-source [ShrimpReel](https://github.com/qianshuixia/shrimpreel) by [浅水虾 (qianshuixia)](https://x.com/qianshuixia2026). Improvements by the MaynorAI team.
+Based on open-source [ShrimpReel](https://github.com/qianshuixia/shrimpreel) by [浅水虾 (qianshuixia)](https://x.com/qianshuixia2026). Improvements by the [MaynorAI](https://x.com/MaynorAI1) team.
 
 An open-source template for "one photo → an AI video that follows a viral template" SaaS sites. Every trending keyword gets its own site: create a repo from this template, change the config, copy and media, and ship. Everything runs on Cloudflare: Workers + D1 + R2 + KV + Queues + Rate Limiting + Cron Triggers.
 
@@ -15,7 +15,7 @@ A 72-second tour, no sound ([Chinese version](README.zh-CN.md); MP4 files in [do
 - Frontend/SSR: TanStack Start (React 19) + Tailwind 4. English at `/`, Chinese at `/zh`.
 - API: Hono (`/api/*`, `/media/*`, `/sitemap.xml`, `/robots.txt`, IndexNow key file); entry point `src/server.ts`.
 - Payments: [Stripe](https://stripe.com) (Checkout + credits, ShipAny-style), or Waffo Pancake / Dodo Payments (Merchants of Record). `mock` is for local dev and e2e only.
-- Video: [TryAllAPI](https://tryallapi.com/) (OpenAI-compatible aggregate), fal.ai queue API, or the optional [yir.ai](https://yir.ai/?ref=qianshuixia) router; `mock` for local dev and e2e. See "Video providers" below.
+- Video: [TryAllAPI](https://tryallapi.com/) (default, OpenAI-compatible aggregate); `mock` for local/e2e only. See "Video providers" below.
 - Included:
   - Users and credits: Google sign-in (including One Tap), credit packs, monthly and yearly subscriptions and a credit ledger, dashboard (videos, billing, settings, redeem codes, invite link, account deletion, data export); billing shows amounts paid and refunded, orders and the ledger load page by page, and every order has a printable detail page (tax invoices come from the payment provider).
   - Orders and generation: partial and full refunds that claw back credits, a generation queue with a dead-letter queue, credits returned automatically on failure.
@@ -48,7 +48,7 @@ This repo is a **fork-ready Cloudflare Workers template** for AI “photo → vi
 | Video | `VIDEO_PROVIDER=tryallapi` ([tryallapi.com](https://tryallapi.com/)) |
 | Local only | Defaults stay `PAYMENT_PROVIDER=mock` and `VIDEO_PROVIDER=mock` |
 
-Waffo / Dodo / fal / yir remain supported; see later sections and [docs/STACK.md](docs/STACK.md).
+Waffo / Dodo / Stripe remain supported for payments; video is TryAllAPI (or mock locally). See [docs/STACK.md](docs/STACK.md).
 
 ### 2. Environment variables
 
@@ -236,7 +236,7 @@ npx wrangler r2 object put <name>-media/templates/<file>.mp4 --file seed/templat
 ```
 
 - `ratelimits[].namespace_id` must be unique within an account; don't share the same numbers across sites.
-- Secrets: `SESSION_SECRET`, `GOOGLE_CLIENT_SECRET`, `WAFFO_MERCHANT_ID`, `WAFFO_PRIVATE_KEY`, `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FAL_KEY`; optionally `YIR_API_KEY` (`VIDEO_PROVIDER=yir`), `TRYALLAPI_API_KEY` (`VIDEO_PROVIDER=tryallapi`), `OPENAI_API_KEY` (image moderation) and `TURNSTILE_SECRET_KEY`. Set them one by one with `npx wrangler secret put <NAME>`, or sync them in one go with `scripts/sync-secrets.mjs`:
+- Secrets: `SESSION_SECRET`, `GOOGLE_CLIENT_SECRET`, `WAFFO_MERCHANT_ID`, `WAFFO_PRIVATE_KEY`, `DODO_API_KEY`, `DODO_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TRYALLAPI_API_KEY`; optionally `TRYALLAPI_BASE_URL`, `OPENAI_API_KEY` (image moderation) and `TURNSTILE_SECRET_KEY`. Set them one by one with `npx wrangler secret put <NAME>`, or sync them in one go with `scripts/sync-secrets.mjs`:
   ```bash
   cp .dev.vars.example .dev.vars.production     # fill in production values; .dev.vars.* is gitignored
   node scripts/sync-secrets.mjs                 # plan only: new, existing, remote-only, still missing; never prints values
@@ -301,8 +301,6 @@ SMOKE_BASE_URL=https://video-template-staging.<subdomain>.workers.dev SMOKE_EXPE
 | Waffo Pancake | Dashboard → Settings → Webhooks | `https://<domain>/api/webhooks/waffo` |
 | Dodo Payments | Dashboard → Webhooks | `https://<domain>/api/webhooks/dodo` |
 | Stripe | Dashboard → Developers → Webhooks | `https://<domain>/api/webhooks/stripe` |
-| fal.ai | Added by the code | `https://<domain>/api/webhooks/fal` |
-| yir.ai | Added by the code (https URLs only; local dev relies on polling) | `https://<domain>/api/webhooks/yir` |
 | TryAllAPI | Added by the code when the upstream accepts `webhook_url` (otherwise poll-only) | `https://<domain>/api/webhooks/tryallapi` |
 
 - **Waffo**: `WAFFO_ENVIRONMENT` is `test` or `prod`. Webhooks are verified with Waffo's public RSA key (bundled in `src/server/payments/waffo.ts`), so no secret is needed. `WAFFO_PRIVATE_KEY` accepts PKCS1/PKCS8 and can be a single line with `\n`.
@@ -321,7 +319,7 @@ SMOKE_BASE_URL=https://video-template-staging.<subdomain>.workers.dev SMOKE_EXPE
   - The merchant name on the checkout comes from your Dodo business registration; change it to the brand name before going live.
 - **Stripe**: set `PAYMENT_PROVIDER=stripe`, `STRIPE_ENVIRONMENT=test|live`, and map every pack/plan id to a Stripe **Price** id in `STRIPE_PRODUCTS` (e.g. `{"starter":"price_…","monthly":"price_…"}`). Secrets: `STRIPE_SECRET_KEY` (`sk_test_`/`sk_live_`) and `STRIPE_WEBHOOK_SECRET` (`whsec_…`). Subscribe the webhook URL above to `checkout.session.completed`, `invoice.payment_succeeded`, `invoice.payment_failed`, `checkout.session.expired`, `charge.refunded`, `customer.subscription.updated`, `customer.subscription.deleted`. Same credits ledger as Waffo/Dodo (see [docs/payments.md](docs/payments.md)). Stripe is **not** a Merchant of Record—tax/invoices are on you; use Waffo/Dodo if you need MoR.
 
-- **fal, yir, tryallapi**: the webhook is only a "go check now" signal; results are always fetched again with the provider API key. A Cron every 5 minutes also polls stuck jobs and fails them (with a credit refund) after 45 minutes.
+- **tryallapi**: the webhook is only a "go check now" signal; results are always fetched again with `TRYALLAPI_API_KEY`. A Cron every 5 minutes also polls stuck jobs and fails them (with a credit refund) after 45 minutes.
 
 ## Design notes
 
@@ -356,19 +354,13 @@ SMOKE_BASE_URL=https://video-template-staging.<subdomain>.workers.dev SMOKE_EXPE
   - If a webhook is lost or late, the site asks the provider directly (`src/server/reconcile.ts`; Dodo: checkout session → payment, Waffo: GraphQL `payments` by merchant order id). The success page asks once at about 15 s and once at about 60 s; the 5-minute Cron checks pending orders between 10 minutes and 24 hours old with exponential backoff (about 10, 20, 40… minutes, at most 10 orders per run); the admin order page has a "查单" (check with provider) action to use before mark-paid. A payment found this way goes through the same checks and idempotency keys as the webhook, so a late webhook isn't credited again. The browser can only send the order id, never a payment status. Orders that already have a `mismatch` event are left for manual review.
 - **Generation**: credits are deducted before enqueueing and returned automatically on failure, timeout or when an admin fails the job. The video provider webhook and the poller may handle the same job concurrently; only one of them can mark it succeeded, and the other never deletes the stored video.
 - **Cost and margin**: when a video is produced, the provider cost is stored in `generations.provider_cost_cents`: the actual charge when yir's bill is already settled, otherwise an estimate from the prices in `site.video`.
-  - fal bills per frame: 16 frames count as one video second, $0.04 per video second at 480p ([pricing](https://fal.ai/models/fal-ai/wan/v2.2-14b/animate/replace)). The template source videos are 24fps, so a video costs 6¢ per second, about $1.08 for 18 seconds. Update `costCentsPerVideoSecond` and `sourceFps` when changing the model, resolution or source frame rate.
   - Jobs failed after a video was produced (timeout, failed by an admin) still record the cost; failures without a video don't. mock records 0.
   - The admin overview shows the last 30 days of provider cost, revenue from credits consumed and estimated gross margin; the generations list shows cost and margin per job. Revenue per credit = net revenue of paid USD orders ÷ credits not clawed back. The provider's invoice is the source of truth.
-- **Video providers**: `VIDEO_PROVIDER` picks `fal` (default), `yir`, `tryallapi`, or `mock`.
-  - **TryAllAPI** (`VIDEO_PROVIDER=tryallapi`): OpenAI-compatible aggregate at [tryallapi.com](https://tryallapi.com/). Set `TRYALLAPI_API_KEY` (optional `TRYALLAPI_BASE_URL`, default `https://tryallapi.com`). Model / prompt / size in `site.video.tryallapi` (default `aigc-video-hailuo`). Submit uses `POST /v1/video/generations` with the user photo as `image`; set `passSourceVideo: true` only if your model accepts a reference video URL. Results are polled (and via webhook when the upstream supports `webhook_url`). See [docs/STACK.md](docs/STACK.md).
-  - [yir.ai](https://yir.ai/?ref=qianshuixia) is an image and video API router. To use it, set `VIDEO_PROVIDER=yir` and the `YIR_API_KEY` secret, and adjust the model and prompt in `site.video.yir` (`src/server/video/yir.ts`).
-  - yir has no character-replacement model like the one the template uses (`wan/v2.2-14b/animate/replace`). The integration uses Kling 2.6 Motion Control (reference mode: the photo plus the template's source video). The template ships the integration code only and it hasn't been tested with a real key (submit, status and error mapping are covered by unit tests), so verify output quality and price yourself; `costCentsPerSecond: 7` is an estimate, so update it from the [yir model page](https://yir.ai/models) before launch.
-  - Jobs are submitted with the generation id as `Idempotency-Key`, so a resubmit after a queue redelivery or an interrupted Worker gets the same yir job back and isn't billed twice. yir matches requests by body, so the signed photo URL is derived from the job's creation time (valid for 2 hours) and stays the same on resubmit.
-  - There is no per-job `max_cost`: yir rejects `max_cost` on requests that reference media by URL. Motion Control is billed by the reference video's length, and the template's source videos have fixed lengths, so the price is already bounded. To cap total spend, set a monthly limit on the API key in the yir Console; past it, submits fail with `YIR_SPEND_LIMIT_EXCEEDED`.
-  - yir can route a job to third-party channels as well as official ones, and users' photos are sent to them. `site.video.yir.routingOnly` defaults to `null`: the API key's Routing Profile picks the channel and a failed attempt can fall back to another. With channel IDs (such as `['official']`) only those channels are used, and the job fails if they all fail. Either way, list the channels that actually handle photos in your privacy policy.
-  - A missing or revoked key, an empty yir balance or an exhausted key limit fails the job with a refund and fires the "Video provider account" alert (see "Monitoring and alerts") right away, without waiting for the failure rate to build up.
-  - Upstream attempts that were billed are charged even if the job fails, and the wallet balance can go negative. yir keeps results for only 7 days; the template copies each video to R2 as soon as it's ready.
-  - Disclosure: the yir links in this README are the author's referral link; per yir's terms the author earns a share of yir's margin on a referred account's spending for its first 6 months. To sign up without it, use [yir.ai](https://yir.ai). Links to fal carry no referral.
+- **Video providers**: `VIDEO_PROVIDER` picks `tryallapi` (default) or `mock` (local/e2e only; blocked in staging/production).
+  - [TryAllAPI](https://tryallapi.com/) is the production video backend. Set `VIDEO_PROVIDER=tryallapi` and the `TRYALLAPI_API_KEY` secret; model and pricing live in `site.video.tryallapi` (`src/server/video/tryallapi.ts`). Optional `TRYALLAPI_BASE_URL` (default `https://tryallapi.com`).
+  - `mock` copies the template source video after a few seconds — for local dev and e2e only.
+
+
 - **Security**: non-GET `/api/*` requests (except webhooks, CSP reports and browser error reports) must have an `Origin` matching the site; uploads are type-checked by magic bytes; uploads and generation are rate-limited per user; banning a user invalidates their sessions immediately; admin actions are written to `admin_audit`.
   - The `redirect` after sign-in (sign-in page and Google callback) only accepts same-site paths: `src/lib/redirect.ts` rejects backslashes, control characters and anything that normalizes to a leading `//`, so links like `/sign-in?redirect=/\evil.com` land on the dashboard.
   - For 5xx errors only admins get the `message`; everyone else gets just the error code, and the details go to Workers Logs as `[api] <method> <path> <code>: <message>`.

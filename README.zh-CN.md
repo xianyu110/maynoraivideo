@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-基于开源项目 [ShrimpReel（虾片）](https://github.com/qianshuixia/shrimpreel)（作者：[浅水虾](https://x.com/qianshuixia2026)）。由 maynorai 团队 改进。
+基于开源项目 [ShrimpReel（虾片）](https://github.com/qianshuixia/shrimpreel)（作者：[浅水虾](https://x.com/qianshuixia2026)）。由 [MaynorAI](https://x.com/MaynorAI1) 团队改进。
 
 开源的“一张照片 → 跟拍某个爆款视频模板”AI 视频 SaaS 模板。每追一个新热词就建一个站：从本模板建仓库，改配置、文案和素材即可上线。全部跑在 Cloudflare 上：Workers + D1 + R2 + KV + Queues + Rate Limiting + Cron。
 
@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/895aab94-d0c9-474e-8d90-61a6c551e536
 - 前端/SSR：TanStack Start（React 19）+ Tailwind 4，`/` 英文、`/zh` 中文
 - API：Hono（`/api/*`、`/media/*`、`/sitemap.xml`、`/robots.txt`、IndexNow key 文件），入口 `src/server.ts`
 - 支付：Stripe（Checkout + 积分，与 ShipAny 同套路）、Waffo Pancake / Dodo Payments（后两者为 MoR）；`mock` 仅用于本地和 e2e
-- 视频：TryAllAPI（tryallapi.com）、fal.ai queue API（默认），可选 [yir.ai](https://yir.ai/?ref=qianshuixia) 网关；`mock` 仅用于本地和 e2e。见下文“视频服务商”
+- 视频：[TryAllAPI](https://tryallapi.com/)（默认）；`mock` 仅用于本地和 e2e。见下文“视频服务商”
 - 已具备：
   - 用户与积分：Google 登录（含 One Tap）、积分包、月付和年付订阅、积分流水、个人中心（视频/账单/设置/兑换码/邀请链接/注销/导出我的数据）；账单显示实付与退款，订单和积分流水可分页加载，每笔订单有可打印的详情页（税务发票由支付商出具）
   - 订单与生成：订单与部分/全额退款回收、生成任务队列（含死信队列）与失败退积分
@@ -140,7 +140,7 @@ npx wrangler r2 object put <name>-media/templates/<file>.mp4 --file seed/templat
 ```
 
 - `ratelimits[].namespace_id` 在同一账号内要唯一，多个站点不要共用同一组数字。
-- 密钥：`SESSION_SECRET`、`GOOGLE_CLIENT_SECRET`、`WAFFO_MERCHANT_ID`、`WAFFO_PRIVATE_KEY`、`DODO_API_KEY`、`DODO_WEBHOOK_SECRET`、`STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`FAL_KEY`；按需加 `YIR_API_KEY`（`VIDEO_PROVIDER=yir`）、`TRYALLAPI_API_KEY`（`VIDEO_PROVIDER=tryallapi`）、`OPENAI_API_KEY`（图片审核）、`TURNSTILE_SECRET_KEY`。可以逐个 `npx wrangler secret put <NAME>`，也可以用 `scripts/sync-secrets.mjs` 一次同步：
+- 密钥：`SESSION_SECRET`、`GOOGLE_CLIENT_SECRET`、`WAFFO_MERCHANT_ID`、`WAFFO_PRIVATE_KEY`、`DODO_API_KEY`、`DODO_WEBHOOK_SECRET`、`STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`TRYALLAPI_API_KEY`；按需加 `TRYALLAPI_BASE_URL`、`OPENAI_API_KEY`（图片审核）、`TURNSTILE_SECRET_KEY`。可以逐个 `npx wrangler secret put <NAME>`，也可以用 `scripts/sync-secrets.mjs` 一次同步：
   ```bash
   cp .dev.vars.example .dev.vars.production     # 填上线用的值；.dev.vars.* 已被 .gitignore 忽略
   node scripts/sync-secrets.mjs                 # 只出计划：新增、已存在、只在远端、同步后仍缺，不打印任何值
@@ -205,8 +205,6 @@ SMOKE_BASE_URL=https://video-template-staging.<子域名>.workers.dev SMOKE_EXPE
 | Waffo Pancake | Dashboard → Settings → Webhooks | `https://<domain>/api/webhooks/waffo` |
 | Dodo Payments | Dashboard → Webhooks | `https://<domain>/api/webhooks/dodo` |
 | Stripe | Dashboard → Developers → Webhooks | `https://<domain>/api/webhooks/stripe` |
-| fal.ai | 代码自动带上 | `https://<domain>/api/webhooks/fal` |
-| yir.ai | 代码自动带上（只有 https 地址才带，本地开发靠轮询） | `https://<domain>/api/webhooks/yir` |
 
 - **Waffo**：`WAFFO_ENVIRONMENT` 为 `test` 或 `prod`。webhook 用 Waffo 公开的 RSA 公钥验签（已内置在 `src/server/payments/waffo.ts`），无需另配密钥。`WAFFO_PRIVATE_KEY` 支持 PKCS1/PKCS8，可以写成单行带 `\n` 的形式。
   - 退款是异步的：后台发起后只拿到工单号 `TKT_`，PSP 处理完才生成 `REF_` 并推送 `refund.succeeded`，test 模式实测要等 12–22 分钟。积分在 webhook 到达时才回收。
@@ -224,7 +222,7 @@ SMOKE_BASE_URL=https://video-template-staging.<子域名>.workers.dev SMOKE_EXPE
   - 收银台显示的商户名取自 Dodo 注册信息。上 live 前在后台改成品牌名。
 - **Stripe**：`PAYMENT_PROVIDER=stripe`，`STRIPE_ENVIRONMENT=test|live`，`STRIPE_PRODUCTS` 填各套餐的 Price ID（`price_…`）。密钥 `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`。回调见上表；事件列表与入账规则见 [docs/payments.md](docs/payments.md) 与 [docs/STACK.md](docs/STACK.md)。Stripe 不是 MoR，税费发票需自理。
 
-- **fal、yir**：webhook 只当作“该查一下了”的信号，结果总是用 `FAL_KEY` 或 `YIR_API_KEY` 重新拉取。另外每 5 分钟的 Cron 会补查卡住的任务，超过 45 分钟判失败并退积分。
+- **tryallapi**：webhook 只当作“该查一下了”的信号，结果总是用 `TRYALLAPI_API_KEY` 重新拉取。另外每 5 分钟的 Cron 会补查卡住的任务，超过 45 分钟判失败并退积分。
 
 ## 关键设计
 
