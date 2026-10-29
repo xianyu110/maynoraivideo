@@ -11,7 +11,7 @@ English notes for forking / uploading to your own GitHub. Full detail: [README.m
 | UI | React 19 + Tailwind 4, locales `en` (default) / `zh` |
 | Auth | Google OAuth (+ One Tap); credits ledger in D1 |
 | Payments | `PAYMENT_PROVIDER`: `stripe` (ShipAny-style Checkout+credits), `waffo`, `dodo`, or `mock` (local) |
-| Video | `VIDEO_PROVIDER`: `tryallapi` (https://tryallapi.com), `fal`, `yir`, or `mock` (local) |
+| Video | `VIDEO_PROVIDER`: `yir` (https://yir.ai/?ref=ctc47abk), `tryallapi`, `fal`, or `mock` (local); optional `VIDEO_FALLBACK_PROVIDER=tryallapi` |
 
 ## Generation flow
 
@@ -30,7 +30,8 @@ STRIPE_ENVIRONMENT=live
 STRIPE_PRODUCTS={"starter":"price_xxx","party":"price_yyy","squad":"price_zzz","monthly":"price_aaa","yearly":"price_bbb"}
 # secrets: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SESSION_SECRET, GOOGLE_CLIENT_SECRET
 
-VIDEO_PROVIDER=tryallapi
+VIDEO_PROVIDER=yir
+VIDEO_FALLBACK_PROVIDER=tryallapi
 # secrets: TRYALLAPI_API_KEY
 # optional: TRYALLAPI_BASE_URL=https://tryallapi.com
 ```

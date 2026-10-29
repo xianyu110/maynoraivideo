@@ -356,8 +356,9 @@ SMOKE_BASE_URL=https://video-template-staging.<subdomain>.workers.dev SMOKE_EXPE
 - **Cost and margin**: when a video is produced, the provider cost is stored in `generations.provider_cost_cents`: the actual charge when yir's bill is already settled, otherwise an estimate from the prices in `site.video`.
   - Jobs failed after a video was produced (timeout, failed by an admin) still record the cost; failures without a video don't. mock records 0.
   - The admin overview shows the last 30 days of provider cost, revenue from credits consumed and estimated gross margin; the generations list shows cost and margin per job. Revenue per credit = net revenue of paid USD orders ÷ credits not clawed back. The provider's invoice is the source of truth.
-- **Video providers**: `VIDEO_PROVIDER` picks `tryallapi` (default) or `mock` (local/e2e only; blocked in staging/production).
-  - [TryAllAPI](https://tryallapi.com/) is the production video backend. Set `VIDEO_PROVIDER=tryallapi` and the `TRYALLAPI_API_KEY` secret; model and pricing live in `site.video.tryallapi` (`src/server/video/tryallapi.ts`). Optional `TRYALLAPI_BASE_URL` (default `https://tryallapi.com`).
+- **Video providers**: `VIDEO_PROVIDER` picks `fal`, `yir` (recommended in production), `tryallapi`, or `mock`. Optional `VIDEO_FALLBACK_PROVIDER` (e.g. `tryallapi`) retries submit once on primary failure before a request id exists (no double billing).
+  - [yir.ai](https://yir.ai/?ref=ctc47abk): `VIDEO_PROVIDER=yir`, secret `YIR_API_KEY`; model in `site.video.yir`. Submit sends `Yir-Referral: ctc47abk`.
+  - [TryAllAPI](https://tryallapi.com/): primary or fallback. Secret `TRYALLAPI_API_KEY`; model in `site.video.tryallapi`. Seedance/Doubao use `/api/v3/...`; other models use `/v1/video/generations`.
   - `mock` copies the template source video after a few seconds — for local dev and e2e only.
 
 

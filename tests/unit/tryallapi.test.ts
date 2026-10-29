@@ -36,7 +36,7 @@ describe('tryallapi provider', () => {
       return json(200, { task_id: 'task_1', status: 'queued' })
     })
     const provider = createTryAllApiProvider(env())
-    expect(await provider.submit(input())).toEqual({ requestId: 'task_1', meta: { base: 'https://tryallapi.com' } })
+    expect(await provider.submit(input())).toEqual({ requestId: 'task_1', meta: { base: 'https://tryallapi.com', api: 'v1' } })
     expect(calls[0]!.url).toBe('https://tryallapi.com/v1/video/generations')
     expect(calls[0]!.body).toMatchObject({
       model: site.video.tryallapi.model,

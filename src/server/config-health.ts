@@ -145,6 +145,13 @@ export function checkConfig(input: ConfigInput): ConfigIssue[] {
   else if (!VIDEO_SECRETS[video]) error('VIDEO_PROVIDER', `未知的 VIDEO_PROVIDER=${video || '(空)'}，可选 fal、yir、tryallapi`)
   else requireSecrets(VIDEO_SECRETS[video], `${video} 视频生成`)
 
+  const fallback = vars('VIDEO_FALLBACK_PROVIDER')
+  if (fallback && fallback !== video) {
+    if (fallback === 'mock') error('VIDEO_FALLBACK_PROVIDER', 'VIDEO_FALLBACK_PROVIDER=mock：生产环境不可用')
+    else if (!VIDEO_SECRETS[fallback]) error('VIDEO_FALLBACK_PROVIDER', `未知的 VIDEO_FALLBACK_PROVIDER=${fallback}，可选 fal、yir、tryallapi`)
+    else requireSecrets(VIDEO_SECRETS[fallback], `${fallback} 视频回退`)
+  }
+
   const moderation = vars('MODERATION_PROVIDER')
   if (moderation === 'mock') error('MODERATION_PROVIDER', 'MODERATION_PROVIDER=mock：生产环境上传图片一律返回 503')
   else if (!MODERATION_SECRETS[moderation]) error('MODERATION_PROVIDER', `未知的 MODERATION_PROVIDER=${moderation || '(空)'}，可选 openai、none`)

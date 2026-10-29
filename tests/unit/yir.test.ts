@@ -44,7 +44,7 @@ describe('yir provider：提交', () => {
     const provider = createYirProvider(env())
     expect(await provider.submit(input())).toEqual({ requestId: 'job_1', meta: {} })
     const headers = calls[0]!.init!.headers as Record<string, string>
-    expect(headers).toMatchObject({ Authorization: 'Bearer yir_test', 'Idempotency-Key': 'gen_1' })
+    expect(headers).toMatchObject({ Authorization: 'Bearer yir_test', 'Idempotency-Key': 'gen_1', 'Yir-Referral': 'ctc47abk' })
     const body = JSON.parse(String(calls[0]!.init!.body))
     expect(body).toMatchObject({
       input: {

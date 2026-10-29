@@ -266,9 +266,9 @@ SMOKE_BASE_URL=https://video-template-staging.<子域名>.workers.dev SMOKE_EXPE
   - fal 按帧计费，16 帧算 1 个视频秒，480p 为 $0.04/视频秒（[价格](https://fal.ai/models/fal-ai/wan/v2.2-14b/animate/replace)）。模板源视频是 24fps，所以成片每秒 6 美分，18 秒约 $1.08。换模型、分辨率或源视频帧率时更新 `costCentsPerVideoSecond` 和 `sourceFps`。
   - 出片后才被判失败的任务（超时、管理员判失败）照样记成本；没出片的失败任务不记。mock 记 0。
   - 后台概览显示近 30 天的服务商成本、消耗积分折算的收入和估算毛利；生成列表逐条显示成本和毛利。每积分实收 = USD 已支付订单的净实收 ÷ 未回收的积分。实际扣费以服务商账单为准。
-- **视频服务商**：`VIDEO_PROVIDER` 可选 `fal`（默认）、`yir`、`tryallapi` 或 `mock`。
-  - **TryAllAPI**（`VIDEO_PROVIDER=tryallapi`）：[tryallapi.com](https://tryallapi.com/) 聚合 API。配置 `TRYALLAPI_API_KEY`（可选 `TRYALLAPI_BASE_URL`）。模型/提示词在 `site.video.tryallapi`。提交走 `POST /v1/video/generations`，用户照片作 `image`；仅当模型支持参考视频时把 `passSourceVideo` 设为 `true`。详见 [docs/STACK.md](docs/STACK.md)。
-  - [yir.ai](https://yir.ai/?ref=qianshuixia) 是图片视频 API 网关，启用方法：`VIDEO_PROVIDER=yir`，secret 写 `YIR_API_KEY`，模型和提示词在 `site.video.yir` 里改（`src/server/video/yir.ts`）。
+- **视频服务商**：`VIDEO_PROVIDER` 可选 `fal`、`yir`（生产推荐）、`tryallapi` 或 `mock`。可设 `VIDEO_FALLBACK_PROVIDER`（如 `tryallapi`）：主服务商提交失败且尚未拿到 request id 时自动切换并重试一次，避免对已接单任务重复计费。
+  - **TryAllAPI**（`VIDEO_PROVIDER=tryallapi` 或回退）：[tryallapi.com](https://tryallapi.com/) 聚合 API。配置 `TRYALLAPI_API_KEY`（可选 `TRYALLAPI_BASE_URL`）。模型/提示词在 `site.video.tryallapi`。Doubao/Seedance 走 `/api/v3/contents/generations/tasks`；其它模型仍走 `POST /v1/video/generations`（用户照片作 `image`）。仅当模型支持参考视频时把 `passSourceVideo` 设为 `true`。详见 [docs/STACK.md](docs/STACK.md)。
+  - [yir.ai](https://yir.ai/?ref=ctc47abk) 是图片视频 API 网关，启用方法：`VIDEO_PROVIDER=yir`，secret 写 `YIR_API_KEY`，模型和提示词在 `site.video.yir` 里改（`src/server/video/yir.ts`）。
   - yir 没有模板所用的角色替换模型（`wan/v2.2-14b/animate/replace`）。接入用的是 Kling 2.6 Motion Control（reference 模式：照片 + 模板源视频），模板只交付接入代码，没有用真实 key 实测（提交、状态查询和错误映射由单元测试覆盖），效果和单价要自己验证，`costCentsPerSecond: 7` 只是估算，上线前按 [yir 模型页](https://yir.ai/models) 的报价改。
   - 提交时用任务 id 作 `Idempotency-Key`：队列重投或 Worker 中断后重新提交，拿回的是同一个 yir 任务，不会重复计费。yir 按请求体识别同一请求，所以照片签名地址按任务创建时间生成，有效期 2 小时，重新提交时地址不变。
   - 没有用 `max_cost` 给单个任务封顶：yir 对用 URL 引用的素材拒绝 `max_cost`。Motion Control 按参考视频秒数计费，而模板源视频的时长是固定的，单价本身就有上限。整体花费建议在 yir Console 给这个 API Key 设月度额度，超出后提交返回 `YIR_SPEND_LIMIT_EXCEEDED`。

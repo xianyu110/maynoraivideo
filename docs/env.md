@@ -26,7 +26,8 @@
 | `DODO_PRODUCTS` | 同上 | 用 Dodo 时 | `scripts/dodo-setup.mjs` 可以生成 |
 | `STRIPE_ENVIRONMENT` | `test`、`live` | 用 Stripe 时 | 应与 `sk_test_` / `sk_live_` 密钥一致；production 下仍是 test 会告警 |
 | `STRIPE_PRODUCTS` | JSON，如 `{"starter":"price_xxx"}` | 用 Stripe 时 | 每个积分包和订阅套餐对应的 **Price ID**（`price_…`，不是 Product ID）。在 Stripe Dashboard → Products 创建商品与价格后填入 |
-| `VIDEO_PROVIDER` | `fal`、`yir`、`tryallapi`、`mock` | 是 | 模型和单价在 `site.video` 里配置；yir → `site.video.yir`，tryallapi → `site.video.tryallapi` |
+| `VIDEO_PROVIDER` | `fal`、`yir`、`tryallapi`、`mock` | 是 | 模型和单价在 `site.video` 里配置；yir → `site.video.yir`，tryallapi → `site.video.tryallapi`；生产推荐 `yir` |
+| `VIDEO_FALLBACK_PROVIDER` | 同上（可空） | 否 | 主服务商提交失败且尚未 accept 时切换并重试一次（如 `tryallapi`）；轮询用行上 provider |
 | `MODERATION_PROVIDER` | `openai`、`none`、`mock` | 是 | 上传图片的审核方式。`none` 不审核，检查时给出警告 |
 | `GOOGLE_CLIENT_ID` | OAuth Client ID | 是 | 站点只有 Google 登录，留空就没人能登录 |
 | `TURNSTILE_SITE_KEY` | 站点密钥 | 否 | 留空则留言和举报表单不做人机校验，检查时给出警告 |

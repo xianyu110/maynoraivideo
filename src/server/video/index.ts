@@ -32,6 +32,15 @@ export function activeVideoProviderId(env: Env): VideoProvider['id'] {
   throw new ApiError(503, 'video_not_configured', `Unsupported VIDEO_PROVIDER: ${env.VIDEO_PROVIDER}`)
 }
 
+/** Optional cross-provider fallback (env VIDEO_FALLBACK_PROVIDER). Must differ from primary. */
+export function videoFallbackProviderId(env: Env, primary: string = activeVideoProviderId(env)): VideoProvider['id'] | null {
+  const raw = (env.VIDEO_FALLBACK_PROVIDER ?? '').trim()
+  if (!raw || raw === primary) return null
+  if (raw === 'fal' || raw === 'yir' || raw === 'tryallapi') return raw
+  if (raw === 'mock' && !isProduction(env)) return 'mock'
+  return null
+}
+
 export function getVideoProvider(env: Env, id: string = activeVideoProviderId(env)): VideoProvider {
   if (id === 'fal') return createFalProvider(env)
   if (id === 'yir') return createYirProvider(env)

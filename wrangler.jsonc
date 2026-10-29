@@ -17,8 +17,10 @@
     "SITE_URL": "http://localhost:3000",
     // waffo | dodo | stripe | mock（mock 只允许非 production）
     "PAYMENT_PROVIDER": "mock",
-    // fal | yir | tryallapi | mock（mock 只允许非 production）
+    // fal | yir | tryallapi | mock（mock 只允许非 production；生产推荐 yir + VIDEO_FALLBACK_PROVIDER=tryallapi）
     "VIDEO_PROVIDER": "mock",
+    // 主服务商提交失败（账户/不可用，非用户输入校验）且尚未拿到 request id 时，自动改用回退服务商重试一次；本地 mock 可留空
+    "VIDEO_FALLBACK_PROVIDER": "",
     // 管理员邮箱（逗号分隔）：登录即为管理员，同时接收举报、留言提醒和系统告警
     "ADMIN_EMAILS": "admin@example.com",
     // 交易邮件发件地址，域名须在 Cloudflare Email Service 完成 Onboard；留空 = 不发信（后台“邮件”页记为 skipped）

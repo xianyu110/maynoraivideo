@@ -3,6 +3,7 @@
 // Idempotency-Key 用生成任务 id：队列重投或 Worker 中断后重新提交会拿回同一个 Job，不会重复计费。
 // yir 按请求体识别同一请求，所以请求体必须每次一致（jobs.ts 里图片签名按任务创建时间算）。
 // webhook 只当“该去查一下了”的信号，结果始终用 API key 重新拉取。
+// 提交带 Yir-Referral: ctc47abk（伙伴未开通时网关静默忽略）；邀请链接 https://yir.ai/?ref=ctc47abk
 import { site } from '#/config/site'
 import { cleanSecret } from '../util'
 import type { VideoProvider, VideoStatus } from './types'
@@ -62,7 +63,7 @@ export function createYirProvider(env: Env): VideoProvider {
       if (input.webhookUrl.startsWith('https://')) body.webhook_url = input.webhookUrl
       const response = await fetch(`${GATEWAY}/videos/generations`, {
         method: 'POST',
-        headers: headers({ 'Idempotency-Key': input.generationId }),
+        headers: headers({ 'Idempotency-Key': input.generationId, 'Yir-Referral': 'ctc47abk' }),
         body: JSON.stringify(body),
       })
       const job = (await response.json().catch(() => null)) as YirJob | null
